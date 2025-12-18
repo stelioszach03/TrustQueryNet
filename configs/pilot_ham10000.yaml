@@ -1,0 +1,31 @@
+experiment_name: pilot-ham10000
+output_dir: artifacts/runs/pilot-ham10000
+dataset:
+  name: ham10000
+  root: data
+  image_dir: data/ham10000/images
+  metadata_csv: data/ham10000/HAM10000_metadata.csv
+  split_csv: data/ham10000/splits.csv
+  save_split_csv: data/ham10000/splits.csv
+  img_size: 224
+training:
+  backbone: efficientnet_b0
+  epochs: 3
+  batch_size: 24
+  loss: generalized_cross_entropy
+noise:
+  type: transition_matrix
+  matrix:
+    - [0.90, 0.00, 0.04, 0.00, 0.06, 0.00, 0.00]
+    - [0.00, 0.92, 0.05, 0.00, 0.03, 0.00, 0.00]
+    - [0.01, 0.00, 0.85, 0.00, 0.12, 0.00, 0.02]
+    - [0.00, 0.00, 0.02, 0.94, 0.02, 0.00, 0.02]
+    - [0.02, 0.01, 0.10, 0.00, 0.86, 0.01, 0.00]
+    - [0.00, 0.00, 0.01, 0.00, 0.01, 0.98, 0.00]
+    - [0.00, 0.00, 0.01, 0.02, 0.00, 0.00, 0.97]
+active_learning:
+  enabled: true
+  method: entropy
+  query_size: 64
+  rounds: 2
+  initial_clean_fraction: 0.1

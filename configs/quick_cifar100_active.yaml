@@ -1,0 +1,29 @@
+experiment_name: quick-cifar100-active
+output_dir: artifacts/runs/quick-cifar100-active
+dataset:
+  name: cifar100
+  root: data
+  img_size: 224
+  val_ratio: 0.15
+  max_train_samples: 256
+  max_val_samples: 64
+  max_test_samples: 64
+training:
+  backbone: efficientnet_b0
+  epochs: 1
+  batch_size: 32
+  loss: cross_entropy
+  pretrained: false
+uncertainty:
+  method: mc_dropout
+  mc_dropout_samples: 4
+noise:
+  type: symmetric
+  rate: 0.2
+active_learning:
+  enabled: true
+  method: hybrid
+  query_size: 16
+  rounds: 2
+  shortlist_factor: 3
+  initial_clean_fraction: 0.1

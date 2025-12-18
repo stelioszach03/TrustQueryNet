@@ -1,0 +1,52 @@
+experiment_name: trustquerynet-default
+seed: 42
+deterministic: false
+output_dir: artifacts/runs/default
+device: auto
+num_workers: 2
+
+dataset:
+  name: cifar100
+  root: data
+  image_dir: data/ham10000/images
+  metadata_csv: data/ham10000/HAM10000_metadata.csv
+  split_csv:
+  save_split_csv:
+  val_ratio: 0.15
+  test_ratio: 0.15
+  img_size: 224
+  max_train_samples:
+  max_val_samples:
+  max_test_samples:
+
+noise:
+  type: symmetric
+  rate: 0.2
+
+training:
+  epochs: 3
+  batch_size: 32
+  lr: 0.0003
+  weight_decay: 0.0001
+  label_smoothing: 0.0
+  loss: cross_entropy
+  pretrained: true
+  backbone: efficientnet_b0
+  optimizer: adamw
+
+uncertainty:
+  method: softmax
+  mc_dropout_samples: 8
+
+evaluation:
+  thresholds: [0.3, 0.5, 0.7, 0.9]
+  bootstrap_samples: 0
+  bootstrap_seed: 42
+
+active_learning:
+  enabled: false
+  method: entropy
+  query_size: 128
+  rounds: 1
+  shortlist_factor: 4
+  initial_clean_fraction: 0.0
