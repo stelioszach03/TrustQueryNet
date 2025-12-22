@@ -1,7 +1,7 @@
 .venv/
 __pycache__/
 .pytest_cache/
-artifacts/
-data/
+/artifacts/
+/data/
 *.pyc
-trustquerynet.egg-info/
+/trustquerynet.egg-info/
