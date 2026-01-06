@@ -3,7 +3,11 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 
-from trustquerynet.data.ham10000_isic import build_ham10000_dataset_report, prepare_ham10000_splits
+from trustquerynet.data.ham10000_isic import (
+    build_ham10000_dataset_report,
+    load_ham10000_metadata,
+    prepare_ham10000_splits,
+)
 
 
 def test_prepare_ham10000_splits_and_report(tmp_path: Path):
@@ -47,3 +51,47 @@ def test_prepare_ham10000_splits_and_report(tmp_path: Path):
     report = build_ham10000_dataset_report(pd.concat(bundle.manifests.values(), ignore_index=True))
     assert report["num_samples"] == len(rows)
     assert report["num_classes"] == 7
+
+
+def test_load_ham10000_metadata_accepts_isic_collection_schema(tmp_path: Path):
+    image_dir = tmp_path / "images"
+    image_dir.mkdir()
+    rows = [
+        {
+            "isic_id": "ISIC_0000001",
+            "lesion_id": "lesion_1",
+            "diagnosis_2": "Malignant epidermal proliferations",
+            "diagnosis_3": "Solar or actinic keratosis",
+            "diagnosis_confirm_type": "histopathology",
+        },
+        {
+            "isic_id": "ISIC_0000002",
+            "lesion_id": "lesion_2",
+            "diagnosis_2": "Malignant epidermal proliferations",
+            "diagnosis_3": "Squamous cell carcinoma, NOS",
+            "diagnosis_confirm_type": "histopathology",
+        },
+        {
+            "isic_id": "ISIC_0000003",
+            "lesion_id": "lesion_3",
+            "diagnosis_2": "Benign soft tissue proliferations - Vascular",
+            "diagnosis_3": None,
+            "diagnosis_confirm_type": "single image expert consensus",
+        },
+    ]
+    for row in rows:
+        Image.new("RGB", (8, 8), color=(255, 0, 0)).save(image_dir / f"{row['isic_id']}.jpg")
+
+    metadata_csv = tmp_path / "isic_collection_metadata.csv"
+    pd.DataFrame(rows).to_csv(metadata_csv, index=False)
+
+    df = load_ham10000_metadata(metadata_csv=metadata_csv, image_dir=image_dir)
+
+    assert df["sample_id"].tolist() == ["ISIC_0000001", "ISIC_0000002", "ISIC_0000003"]
+    assert df["group_id"].tolist() == ["lesion_1", "lesion_2", "lesion_3"]
+    assert df["y_clean"].tolist() == [0, 0, 6]
+    assert df["ground_truth_type"].tolist() == [
+        "histopathology",
+        "histopathology",
+        "single image expert consensus",
+    ]

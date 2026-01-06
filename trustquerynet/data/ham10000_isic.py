@@ -17,6 +17,16 @@ from trustquerynet.data.transforms import build_eval_transform, build_train_tran
 HAM10000_CLASSES = ["akiec", "bcc", "bkl", "df", "mel", "nv", "vasc"]
 HAM10000_CLASS_TO_INDEX = {label: idx for idx, label in enumerate(HAM10000_CLASSES)}
 HAM10000_REQUIRED_COLUMNS = {"image_id", "lesion_id", "dx"}
+ISIC_COLLECTION_REQUIRED_COLUMNS = {"isic_id", "lesion_id", "diagnosis_2", "diagnosis_confirm_type"}
+ISIC_TO_HAM10000_LABEL = {
+    "Basal cell carcinoma": "bcc",
+    "Dermatofibroma": "df",
+    "Melanoma, NOS": "mel",
+    "Nevus": "nv",
+    "Pigmented benign keratosis": "bkl",
+    "Solar or actinic keratosis": "akiec",
+    "Squamous cell carcinoma, NOS": "akiec",
+}
 
 
 @dataclass
@@ -41,20 +51,37 @@ def load_ham10000_metadata(metadata_csv: str | Path, image_dir: str | Path) -> p
     if not image_dir.exists():
         raise FileNotFoundError(f"HAM10000 image directory not found: {image_dir}")
     df = pd.read_csv(metadata_csv)
-    missing = HAM10000_REQUIRED_COLUMNS.difference(df.columns)
-    if missing:
-        raise ValueError(f"HAM10000 metadata is missing required columns: {sorted(missing)}")
-    df = df.rename(columns={"image_id": "sample_id", "lesion_id": "group_id"})
-    df["y_clean"] = df["dx"].map(HAM10000_CLASS_TO_INDEX)
-    if "dx_type" in df.columns:
-        df["ground_truth_type"] = df["dx_type"]
+    if HAM10000_REQUIRED_COLUMNS.issubset(df.columns):
+        df = df.rename(columns={"image_id": "sample_id", "lesion_id": "group_id"})
+        df["label_name"] = df["dx"]
+        if "dx_type" in df.columns:
+            df["ground_truth_type"] = df["dx_type"]
+        else:
+            df["ground_truth_type"] = "unknown"
+    elif ISIC_COLLECTION_REQUIRED_COLUMNS.issubset(df.columns):
+        df = df.rename(columns={"isic_id": "sample_id", "lesion_id": "group_id"})
+        df["label_name"] = df["diagnosis_3"].map(ISIC_TO_HAM10000_LABEL)
+        vascular_mask = (
+            df["label_name"].isna()
+            & df["diagnosis_2"].fillna("").str.contains("Vascular", case=False)
+        )
+        df.loc[vascular_mask, "label_name"] = "vasc"
+        df["ground_truth_type"] = df["diagnosis_confirm_type"].fillna("unknown")
     else:
-        df["ground_truth_type"] = "unknown"
+        missing_classic = sorted(HAM10000_REQUIRED_COLUMNS.difference(df.columns))
+        missing_isic = sorted(ISIC_COLLECTION_REQUIRED_COLUMNS.difference(df.columns))
+        raise ValueError(
+            "HAM10000 metadata did not match a supported schema. "
+            f"Missing classic columns: {missing_classic}; missing ISIC collection columns: {missing_isic}"
+        )
+
+    df["y_clean"] = df["label_name"].map(HAM10000_CLASS_TO_INDEX)
     df["image_path"] = df["sample_id"].apply(lambda sample_id: str(image_dir / f"{sample_id}.jpg"))
     df["is_queried"] = False
     df["is_trusted"] = False
     if df["y_clean"].isna().any():
-        raise ValueError("Found HAM10000 rows with unknown dx labels.")
+        unknown = sorted(df.loc[df["y_clean"].isna(), "label_name"].fillna("NA").unique().tolist())
+        raise ValueError(f"Found HAM10000 rows with unknown labels after normalization: {unknown}")
     return df
 
 
