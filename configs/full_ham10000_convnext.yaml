@@ -1,5 +1,5 @@
-experiment_name: full-ham10000-convnext
-output_dir: artifacts/runs/full-ham10000-convnext
+experiment_name: full-ham10000-convnext-stable
+output_dir: artifacts/runs/full-ham10000-convnext-stable
 dataset:
   name: ham10000
   root: data
