@@ -12,7 +12,7 @@ import pandas as pd
 import torch
 import yaml
 from torch.optim import AdamW, SGD
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 
 from trustquerynet.data.cifar100 import prepare_cifar100_splits
 from trustquerynet.data.ham10000_isic import prepare_ham10000_splits
@@ -104,6 +104,50 @@ def _build_loader(dataset, batch_size: int, shuffle: bool, num_workers: int, dev
         shuffle=shuffle,
         num_workers=num_workers,
         pin_memory=device.type == "cuda",
+    )
+
+
+def _build_weighted_sample_weights(labels: np.ndarray) -> np.ndarray:
+    labels = np.asarray(labels, dtype=np.int64)
+    class_counts = np.bincount(labels)
+    if np.any(class_counts == 0):
+        # Only keep weights for labels that actually appear in the current dataset view.
+        nonzero = class_counts > 0
+        remap = np.zeros_like(class_counts, dtype=np.float64)
+        remap[nonzero] = 1.0 / class_counts[nonzero]
+        return remap[labels]
+    class_weights = 1.0 / class_counts.astype(np.float64)
+    return class_weights[labels]
+
+
+def _build_train_loader(cfg, dataset, device: torch.device):
+    training_cfg = cfg["training"]
+    batch_size = int(training_cfg["batch_size"])
+    num_workers = int(cfg.get("num_workers", 2))
+    sampler_mode = training_cfg.get("sampler", "shuffle").lower()
+
+    if sampler_mode == "weighted":
+        sample_weights = _build_weighted_sample_weights(dataset.get_observed_labels())
+        sampler = WeightedRandomSampler(
+            weights=torch.as_tensor(sample_weights, dtype=torch.double),
+            num_samples=len(sample_weights),
+            replacement=True,
+        )
+        return DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            sampler=sampler,
+            num_workers=num_workers,
+            pin_memory=device.type == "cuda",
+        )
+
+    return _build_loader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        device=device,
     )
 
 
@@ -250,13 +294,7 @@ def train_one_run(cfg, dataset_bundle=None, output_dir=None, apply_noise: bool =
     optimizer = _create_optimizer(cfg, model)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(int(cfg["training"]["epochs"]), 1))
 
-    train_loader = _build_loader(
-        bundle.train,
-        batch_size=int(cfg["training"]["batch_size"]),
-        shuffle=True,
-        num_workers=int(cfg.get("num_workers", 2)),
-        device=device,
-    )
+    train_loader = _build_train_loader(cfg, bundle.train, device=device)
     val_loader = _build_loader(
         bundle.val,
         batch_size=int(cfg["training"]["batch_size"]),

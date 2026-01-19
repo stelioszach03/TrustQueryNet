@@ -1,5 +1,5 @@
-experiment_name: full-ham10000-convnext-stable
-output_dir: artifacts/runs/full-ham10000-convnext-stable
+experiment_name: full-ham10000-convnext-balanced
+output_dir: artifacts/runs/full-ham10000-convnext-balanced
 dataset:
   name: ham10000
   root: data
@@ -13,7 +13,9 @@ training:
   epochs: 6
   batch_size: 32
   lr: 0.0001
-  loss: generalized_cross_entropy
+  loss: cross_entropy
+  label_smoothing: 0.05
+  sampler: weighted
 noise:
   type: transition_matrix
   matrix:

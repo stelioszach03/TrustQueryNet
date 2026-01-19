@@ -30,6 +30,7 @@ training:
   weight_decay: 0.0001
   label_smoothing: 0.0
   loss: cross_entropy
+  sampler: shuffle
   pretrained: true
   backbone: efficientnet_b0
   optimizer: adamw
