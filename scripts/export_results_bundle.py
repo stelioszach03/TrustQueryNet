@@ -231,7 +231,16 @@ def maybe_trigger_download(path: Path) -> None:
         from google.colab import files  # type: ignore
     except Exception:
         return
-    files.download(str(path))
+    try:
+        files.download(str(path))
+    except Exception as exc:
+        print(
+            "Direct notebook download was skipped. "
+            "Run this in a separate Colab cell instead:\n"
+            "from google.colab import files\n"
+            f"files.download({str(path)!r})"
+        )
+        print(f"download_error={exc}")
 
 
 def main() -> None:
