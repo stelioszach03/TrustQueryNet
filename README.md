@@ -2,23 +2,23 @@
 
 TrustQueryNet is a local-first, research-oriented image classification pipeline for noisy labels, uncertainty estimation, active querying, and selective prediction.
 
-This repository is intentionally structured so the exact same codebase can be used:
+The current project slice targets dermatoscopic skin lesion classification on HAM10000 and is designed to run:
 
-- on a local Apple Silicon laptop for quick iterations and pilot runs
-- on Colab or an A100-backed VM for heavier experiments
+- locally on Apple Silicon for quick iteration
+- in Colab with GPU for pilot and full experiments
 
-## What is in scope right now
+## Implemented scope
 
-This first cut implements a practical v1:
+This repository currently includes:
 
-- reproducible dataset splits
+- reproducible group-aware HAM10000 splits
 - symmetric and transition-matrix label noise
 - pretrained backbones through `timm`
-- baseline and robust losses
-- temperature scaling
-- uncertainty-based acquisition scoring
-- selective risk / coverage metrics
-- a notebook orchestrator plus a CLI entrypoint
+- cross-entropy, generalized cross-entropy, and symmetric cross-entropy losses
+- temperature scaling for calibration
+- uncertainty-aware active querying
+- selective risk / coverage evaluation
+- Colab export tooling for final paper bundles
 
 ## Quick start
 
@@ -27,47 +27,105 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -e ".[dev]"
+pytest -q
 python scripts/run_experiment.py --config configs/quick_cifar100.yaml
 ```
 
-## Current status
+## Verified status
 
-Verified locally:
+Verified end-to-end:
 
-- package installs in editable mode
-- `pytest -q` passes
-- `configs/quick_cifar100.yaml` runs end-to-end on Apple Silicon
-- `configs/quick_cifar100_active.yaml` is available for active-learning smoke checks
+- local package install in editable mode
+- local test suite
+- local CIFAR100 smoke runs
+- Colab UI pilot HAM10000 run
+- Colab UI full HAM10000 run with exported artifacts bundle
 
-Not yet verified end-to-end:
+Recommended workflow:
 
-- real HAM10000 download and pilot run
-- Colab execution against your own Drive-mounted HAM10000 copy
+- use [notebooks/trustquerynet_local.ipynb](/Users/stelioszacharioudakis/Documents/TrustQueryNet/notebooks/trustquerynet_local.ipynb) for local-first exploration
+- use [notebooks/trustquerynet_colab.ipynb](/Users/stelioszacharioudakis/Documents/TrustQueryNet/notebooks/trustquerynet_colab.ipynb) in browser Colab UI for Drive-backed runs and artifact persistence
 
-## Notebook
+## Final HAM10000 results
 
-Open [notebooks/trustquerynet_local.ipynb](/Users/stelioszacharioudakis/Documents/TrustQueryNet/notebooks/trustquerynet_local.ipynb) for the local-first runner notebook.
+The current main result is the balanced ConvNeXt-Tiny run:
 
-For Colab handoff, use [notebooks/trustquerynet_colab.ipynb](/Users/stelioszacharioudakis/Documents/TrustQueryNet/notebooks/trustquerynet_colab.ipynb).
+- config: [configs/full_ham10000_convnext.yaml](/Users/stelioszacharioudakis/Documents/TrustQueryNet/configs/full_ham10000_convnext.yaml)
+- exported run name: `full-ham10000-convnext-balanced`
+- setup: ConvNeXt-Tiny, weighted sampler, cross-entropy with label smoothing, transition-matrix noise, entropy-based active querying
 
-## Colab handoff
+Calibrated test metrics from the exported paper bundle:
 
-Once the local scaffold is validated, the same repo can be pushed to GitHub and run in Colab with:
+| Run | Accuracy | Macro-F1 | ECE | Macro-AUROC | Coverage@0.5 | Risk@0.5 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pilot-ham10000` | 0.7785 | 0.4950 | 0.0599 | 0.8827 | 0.8175 | 0.1499 |
+| `full-ham10000-convnext-balanced` | 0.8330 | 0.7372 | 0.0250 | 0.9434 | 0.9441 | 0.1427 |
 
-```bash
-git clone <YOUR_REPO_URL>
-cd TrustQueryNet
-pip install -q -r requirements-colab.txt
-pip install -q -e . --no-deps
-python scripts/run_experiment.py --config configs/pilot_ham10000.yaml
-```
+Why this matters:
 
-Before the first HAM10000 run, prepare the split/report artifacts once:
+- the full run improves macro-F1 by roughly `+0.242`
+- calibration remains strong with `ECE ~= 0.025`
+- the exported plots show a clear risk-coverage and reliability story for a trustworthy ML write-up
+
+These are single-seed project results, not a multi-seed benchmark claim.
+
+## Colab workflow
+
+1. Open [notebooks/trustquerynet_colab.ipynb](/Users/stelioszacharioudakis/Documents/TrustQueryNet/notebooks/trustquerynet_colab.ipynb) in Colab UI.
+2. Mount Drive in the notebook.
+3. Pull the latest repo state.
+4. Run the pilot or full experiment config.
+5. Export a paper bundle with the script below.
+
+Prepare HAM10000 once:
 
 ```bash
 python scripts/prepare_ham10000.py \
-  --metadata-csv data/ham10000/HAM10000_metadata.csv \
-  --image-dir data/ham10000/images \
-  --split-csv data/ham10000/splits.csv \
-  --report-json artifacts/ham10000_dataset_report.json
+  --metadata-csv /content/drive/MyDrive/HAM10000/HAM10000_metadata.csv \
+  --image-dir /content/drive/MyDrive/HAM10000/images \
+  --split-csv /content/drive/MyDrive/HAM10000/splits.csv \
+  --report-json /content/drive/MyDrive/TrustQueryNet/artifacts/ham10000_dataset_report.json
 ```
+
+Run the current best full experiment:
+
+```bash
+python scripts/run_experiment.py --config configs/colab_full_ham10000_convnext.yaml
+```
+
+## Export final artifacts
+
+The paper/export bundle script packages:
+
+- `results_table.csv`
+- `results_table.md`
+- `summary.json`
+- selected metrics, split manifests, configs, and plots from the chosen runs
+
+Example Colab command:
+
+```bash
+python scripts/export_results_bundle.py \
+  --runs-root /content/drive/MyDrive/TrustQueryNet/artifacts/runs \
+  --run pilot-ham10000 \
+  --run full-ham10000-convnext-balanced \
+  --output-root /content/drive/MyDrive/TrustQueryNet/exports \
+  --bundle-name trustquerynet-paper-bundle
+```
+
+## Paper and portfolio docs
+
+Project-facing write-up assets live here:
+
+- [docs/mini_paper_draft.md](/Users/stelioszacharioudakis/Documents/TrustQueryNet/docs/mini_paper_draft.md)
+- [docs/portfolio_copy.md](/Users/stelioszacharioudakis/Documents/TrustQueryNet/docs/portfolio_copy.md)
+
+## Current boundaries
+
+This repo slice is strong enough for a portfolio project and mini-paper, but it does not yet claim:
+
+- multi-seed statistical stability studies
+- external dataset validation
+- advanced methods such as SelectiveNet, DivideMix, or SWAG as verified final results
+
+The implemented foundation is intentionally modular so those can be added later without rewriting the core pipeline.
