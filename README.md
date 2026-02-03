@@ -69,6 +69,25 @@ Why this matters:
 
 These are single-seed project results, not a multi-seed benchmark claim.
 
+## Multi-seed benchmarking
+
+For Q1-style reporting, run the current best config across multiple seeds and aggregate the calibrated test metrics:
+
+```bash
+python scripts/run_multiseed_experiment.py \
+  --config configs/full_ham10000_convnext.yaml \
+  --seeds 42 52 62 72 82 \
+  --resume-existing
+```
+
+This writes a sibling directory next to the base run output, for example:
+
+- `artifacts/runs/full-ham10000-convnext-balanced-multiseed/seed-42`
+- `artifacts/runs/full-ham10000-convnext-balanced-multiseed/aggregate_results.json`
+- `artifacts/runs/full-ham10000-convnext-balanced-multiseed/aggregate_results.md`
+
+On HAM10000, keep `split_csv` populated so the lesion-level split stays fixed across seeds while the training randomness changes.
+
 ## Colab workflow
 
 1. Open [notebooks/trustquerynet_colab.ipynb](/Users/stelioszacharioudakis/Documents/TrustQueryNet/notebooks/trustquerynet_colab.ipynb) in Colab UI.
