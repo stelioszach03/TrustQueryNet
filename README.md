@@ -112,6 +112,20 @@ Run the current best full experiment:
 python scripts/run_experiment.py --config configs/colab_full_ham10000_convnext.yaml
 ```
 
+For heavier Colab runs, especially multi-seed experiments, stage HAM10000 into local runtime storage first so training does not stream images from Google Drive:
+
+```bash
+python scripts/stage_ham10000_local.py \
+  --source-root /content/drive/MyDrive/HAM10000 \
+  --target-root /content/HAM10000-local
+```
+
+Then point the Colab config at:
+
+- metadata: `/content/HAM10000-local/HAM10000_metadata.csv`
+- images: `/content/HAM10000-local/images`
+- splits: `/content/HAM10000-local/splits.csv`
+
 ## Export final artifacts
 
 The paper/export bundle script packages:
