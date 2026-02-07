@@ -88,6 +88,30 @@ This writes a sibling directory next to the base run output, for example:
 
 On HAM10000, keep `split_csv` populated so the lesion-level split stays fixed across seeds while the training randomness changes.
 
+## Ablation study workflow
+
+Two focused ablation configs are included for the current ConvNeXt-Tiny HAM10000 setup:
+
+- [configs/full_ham10000_convnext_no_weighted.yaml](/Users/stelioszacharioudakis/Documents/TrustQueryNet/configs/full_ham10000_convnext_no_weighted.yaml)
+- [configs/full_ham10000_convnext_no_querying.yaml](/Users/stelioszacharioudakis/Documents/TrustQueryNet/configs/full_ham10000_convnext_no_querying.yaml)
+
+Recommended Q1-style ablation set:
+
+- `full-ham10000-convnext-balanced`: current main result
+- `full-ham10000-convnext-no-weighted`: removes the weighted sampler
+- `full-ham10000-convnext-no-querying`: keeps the initial trusted fraction but disables query rounds
+
+After running each one with the multi-seed runner, export a single paper-ready table:
+
+```bash
+python scripts/export_ablation_table.py \
+  --runs-root /content/drive/MyDrive/TrustQueryNet/artifacts/runs \
+  --run-spec full-ham10000-convnext-balanced-multiseed::Full\ model \
+  --run-spec full-ham10000-convnext-no-weighted-multiseed::No\ weighted\ sampler \
+  --run-spec full-ham10000-convnext-no-querying-multiseed::No\ query\ rounds \
+  --output-dir /content/drive/MyDrive/TrustQueryNet/ablations/ham10000
+```
+
 ## Colab workflow
 
 1. Open [notebooks/trustquerynet_colab.ipynb](/Users/stelioszacharioudakis/Documents/TrustQueryNet/notebooks/trustquerynet_colab.ipynb) in Colab UI.
