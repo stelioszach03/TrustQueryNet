@@ -112,6 +112,39 @@ python scripts/export_ablation_table.py \
   --output-dir /content/drive/MyDrive/TrustQueryNet/ablations/ham10000
 ```
 
+## External validation workflow
+
+The current external-validation slice targets the official `ISIC 2019` test set and maps its challenge labels into the HAM10000-style 7-class taxonomy:
+
+- `AK` + `SCC` -> `akiec`
+- `MEL` -> `mel`
+- `NV` -> `nv`
+- `BCC` -> `bcc`
+- `BKL` -> `bkl`
+- `DF` -> `df`
+- `VASC` -> `vasc`
+- `UNK` is filtered by default
+
+Download the official ISIC 2019 external test set:
+
+```bash
+python scripts/download_isic2019_external.py \
+  --output-root /content/drive/MyDrive/ISIC2019_external_test
+```
+
+Then evaluate a completed multi-seed run on that external test set:
+
+```bash
+python scripts/run_external_validation.py \
+  --multiseed-run-dir /content/drive/MyDrive/TrustQueryNet/artifacts/runs/full-ham10000-convnext-no-weighted-multiseed \
+  --ground-truth-csv /content/drive/MyDrive/ISIC2019_external_test/ISIC_2019_Test_GroundTruth.csv \
+  --metadata-csv /content/drive/MyDrive/ISIC2019_external_test/ISIC_2019_Test_Metadata.csv \
+  --image-dir /content/drive/MyDrive/ISIC2019_external_test/images \
+  --num-workers 0
+```
+
+This reuses the existing multi-seed checkpoints and writes an external validation summary with per-seed metrics, aggregate mean/std tables, and reliability / risk-coverage plots.
+
 ## Colab workflow
 
 1. Open [notebooks/trustquerynet_colab.ipynb](/Users/stelioszacharioudakis/Documents/TrustQueryNet/notebooks/trustquerynet_colab.ipynb) in Colab UI.
