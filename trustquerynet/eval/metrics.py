@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
 from trustquerynet.eval.calibration import expected_calibration_error, multiclass_brier_score
-from trustquerynet.eval.selective import risk_coverage_curve
+from trustquerynet.eval.selective import aurc_from_curve, risk_coverage_curve
 
 
 def compute_all(y_true, probs, y_pred=None, thresholds=None) -> Dict[str, Any]:
@@ -29,6 +29,7 @@ def compute_all(y_true, probs, y_pred=None, thresholds=None) -> Dict[str, Any]:
 
     if thresholds is not None:
         rc_df = risk_coverage_curve(y_true, probs, thresholds)
+        metrics["aurc"] = float(aurc_from_curve(rc_df))
         metrics["coverage_at_0.5"] = float(rc_df.loc[(rc_df["threshold"] - 0.5).abs().idxmin(), "coverage"])
         metrics["risk_at_0.5"] = float(rc_df.loc[(rc_df["threshold"] - 0.5).abs().idxmin(), "selective_risk"])
     return metrics

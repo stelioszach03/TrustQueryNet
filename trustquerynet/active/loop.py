@@ -19,6 +19,7 @@ class ActiveLearningReport:
     selected_indices_by_round: list[list[int]]
     round_metrics: list[dict]
     final_metrics: dict
+    repair_protocol: str
 
 
 def _select_initial_trusted_indices(labels: np.ndarray, fraction: float, seed: int) -> np.ndarray:
@@ -93,6 +94,7 @@ def run_active_learning(cfg) -> ActiveLearningReport:
             embeddings=artifacts.train_embeddings,
             selected_mask=selected_mask,
             shortlist_factor=shortlist_factor,
+            seed=int(cfg["seed"]) + round_idx,
         )
         bundle.train.repair_labels(top_global)
         selected_mask[top_global] = True
@@ -104,11 +106,13 @@ def run_active_learning(cfg) -> ActiveLearningReport:
         selected_indices_by_round=selected_indices_by_round,
         round_metrics=round_metrics,
         final_metrics=final_metrics,
+        repair_protocol="simulated_oracle_trusted_label_repair",
     )
     report_path = output_dir / "active_learning_report.json"
     with report_path.open("w", encoding="utf-8") as handle:
         json.dump(
             {
+                "repair_protocol": report.repair_protocol,
                 "initial_trusted_indices": initial_trusted_indices.tolist(),
                 "selected_indices_by_round": selected_indices_by_round,
                 "round_metrics": round_metrics,

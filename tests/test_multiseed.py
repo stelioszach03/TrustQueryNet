@@ -10,13 +10,19 @@ def test_make_seed_summary_row_extracts_best_validation_and_calibrated_test_metr
             {"epoch": 1, "val": {"accuracy": 0.70, "macro_f1": 0.45, "ece": 0.12, "macro_auroc": 0.81}},
             {"epoch": 2, "val": {"accuracy": 0.74, "macro_f1": 0.51, "ece": 0.09, "macro_auroc": 0.84}},
         ],
+        "selected_checkpoint": {
+            "policy": "best_val_macro_f1",
+            "epoch": 2,
+            "history_entry": {"epoch": 2, "val": {"accuracy": 0.74, "macro_f1": 0.51, "ece": 0.09, "macro_auroc": 0.84}},
+        },
         "noise": {"noise_type": "pre_applied", "realized_flip_rate": 0.05},
-        "test_uncalibrated": {"accuracy": 0.76, "macro_f1": 0.55, "ece": 0.10, "macro_auroc": 0.88},
+        "test_uncalibrated": {"accuracy": 0.76, "macro_f1": 0.55, "ece": 0.10, "macro_auroc": 0.88, "aurc": 0.20},
         "test_calibrated": {
             "accuracy": 0.77,
             "macro_f1": 0.57,
             "ece": 0.04,
             "macro_auroc": 0.89,
+            "aurc": 0.18,
             "coverage_at_0.5": 0.90,
             "risk_at_0.5": 0.13,
         },
@@ -38,6 +44,7 @@ def test_make_seed_summary_row_extracts_best_validation_and_calibrated_test_metr
     assert row["best_val_macro_f1"] == pytest.approx(0.51)
     assert row["test_cal_accuracy"] == pytest.approx(0.77)
     assert row["test_cal_macro_auroc"] == pytest.approx(0.89)
+    assert row["test_cal_aurc"] == pytest.approx(0.18)
     assert row["test_cal_coverage_at_0_5"] == pytest.approx(0.90)
     assert row["realized_flip_rate"] == pytest.approx(0.05)
 

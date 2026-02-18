@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 
 from trustquerynet.data.cifar100 import prepare_cifar100_splits
 from trustquerynet.data.ham10000_isic import prepare_ham10000_splits
+from trustquerynet.data.transforms import build_eval_transform
 from trustquerynet.eval.calibration import expected_calibration_error
 from trustquerynet.eval.metrics import accuracy_from_probs, compute_all, macro_f1_from_probs
 from trustquerynet.eval.plots import save_reliability_diagram, save_risk_coverage_plot
@@ -24,7 +25,7 @@ from trustquerynet.eval.stats_tests import bootstrap_metric_ci
 from trustquerynet.methods.losses import build_loss
 from trustquerynet.models.backbones import create_backbone, forward_with_embeddings
 from trustquerynet.noise.base import build_noise_model
-from trustquerynet.training.checkpointing import save_checkpoint
+from trustquerynet.training.checkpointing import checkpoint_name_for_policy, load_checkpoint, save_checkpoint
 from trustquerynet.training.reproducibility import choose_device, set_seed
 from trustquerynet.uncertainty.mc_dropout import predict_mc_dropout
 from trustquerynet.uncertainty.temperature_scaling import fit_temperature
@@ -107,6 +108,21 @@ def _build_loader(dataset, batch_size: int, shuffle: bool, num_workers: int, dev
     )
 
 
+def _amp_enabled(cfg, device: torch.device) -> bool:
+    return bool(cfg["training"].get("amp", True)) and device.type == "cuda"
+
+
+def _autocast_context(device: torch.device, enabled: bool):
+    return torch.autocast(device_type=device.type, dtype=torch.float16, enabled=enabled)
+
+
+def _create_grad_scaler(enabled: bool):
+    try:
+        return torch.amp.GradScaler("cuda", enabled=enabled)
+    except Exception:
+        return torch.cuda.amp.GradScaler(enabled=enabled)
+
+
 def _build_weighted_sample_weights(labels: np.ndarray) -> np.ndarray:
     labels = np.asarray(labels, dtype=np.int64)
     class_counts = np.bincount(labels)
@@ -151,18 +167,92 @@ def _build_train_loader(cfg, dataset, device: torch.device):
     )
 
 
-def _run_epoch(model, loader, criterion, optimizer, device: torch.device) -> float:
+def _build_eval_view_dataset(dataset, img_size: int):
+    return dataset.clone_with_transform(build_eval_transform(img_size))
+
+
+def _resolve_thresholds(cfg: Dict[str, Any]) -> list[float]:
+    eval_cfg = cfg.get("evaluation", {})
+    thresholds = eval_cfg.get("thresholds")
+    if thresholds is not None:
+        return [float(value) for value in thresholds]
+    return default_threshold_grid(num=int(eval_cfg.get("num_thresholds", 101))).tolist()
+
+
+def _create_scheduler(cfg: Dict[str, Any], optimizer):
+    training_cfg = cfg["training"]
+    epochs = max(int(training_cfg["epochs"]), 1)
+    warmup_epochs = max(int(training_cfg.get("warmup_epochs", 0) or 0), 0)
+
+    def lr_lambda(epoch: int) -> float:
+        if warmup_epochs > 0 and epoch < warmup_epochs:
+            return float(epoch + 1) / float(max(warmup_epochs, 1))
+        if epochs <= warmup_epochs:
+            return 1.0
+        progress = float(epoch - warmup_epochs + 1) / float(max(epochs - warmup_epochs, 1))
+        progress = min(max(progress, 0.0), 1.0)
+        return 0.5 * (1.0 + np.cos(np.pi * progress))
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+
+
+def _checkpoint_improved(policy: str, current_value: float, best_value: float) -> bool:
+    if policy == "last":
+        return False
+    if policy == "best_val_macro_f1":
+        return current_value > best_value
+    if policy in {"best_val_loss", "best_val_ece"}:
+        return current_value < best_value
+    return False
+
+
+def _metric_value_for_policy(policy: str, val_outputs: Dict[str, Any], val_metrics: Dict[str, Any]) -> float:
+    if policy == "last":
+        return 0.0
+    if policy == "best_val_loss":
+        return float(val_outputs["loss"])
+    if policy == "best_val_macro_f1":
+        return float(val_metrics["macro_f1"])
+    if policy == "best_val_ece":
+        return float(val_metrics["ece"])
+    raise ValueError(f"Unsupported checkpoint policy: {policy}")
+
+
+def _initial_best_value(policy: str) -> float:
+    if policy == "last":
+        return 0.0
+    if policy == "best_val_macro_f1":
+        return float("-inf")
+    if policy in {"best_val_loss", "best_val_ece"}:
+        return float("inf")
+    raise ValueError(f"Unsupported checkpoint policy: {policy}")
+
+
+def _history_entry_for_epoch(history: list[dict[str, Any]], epoch: int) -> dict[str, Any] | None:
+    for entry in history:
+        if int(entry.get("epoch", -1)) == int(epoch):
+            return entry
+    return None
+
+
+def _run_epoch(model, loader, criterion, optimizer, scaler, device: torch.device, *, use_amp: bool) -> float:
     model.train()
     total_loss = 0.0
     total_examples = 0
     for batch in loader:
         images = batch["image"].to(device)
         targets = batch["y_observed"].to(device)
-        optimizer.zero_grad()
-        logits = model(images)
-        loss = criterion(logits, targets)
-        loss.backward()
-        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        with _autocast_context(device, use_amp):
+            logits = model(images)
+            loss = criterion(logits, targets)
+        if use_amp:
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            optimizer.step()
         batch_size = images.size(0)
         total_loss += loss.item() * batch_size
         total_examples += batch_size
@@ -177,6 +267,7 @@ def _collect_predictions(
     device: torch.device,
     target_key: str = "y_clean",
     return_embeddings: bool = False,
+    use_amp: bool = False,
 ) -> Dict[str, Any]:
     model.eval()
     losses = []
@@ -188,9 +279,10 @@ def _collect_predictions(
     for batch in loader:
         images = batch["image"].to(device)
         targets = batch[target_key].to(device)
-        logits, embeddings = forward_with_embeddings(model, images)
-        loss = criterion(logits, targets)
-        probs = torch.softmax(logits, dim=1)
+        with _autocast_context(device, use_amp):
+            logits, embeddings = forward_with_embeddings(model, images)
+            loss = criterion(logits, targets)
+            probs = torch.softmax(logits, dim=1)
         losses.append(loss.item() * images.size(0))
         logits_list.append(logits.cpu())
         probs_list.append(probs.cpu())
@@ -285,6 +377,8 @@ def train_one_run(cfg, dataset_bundle=None, output_dir=None, apply_noise: bool =
         num_classes=num_classes,
         img_size=int(cfg["dataset"]["img_size"]),
     ).to(device)
+    use_amp = _amp_enabled(cfg, device)
+    scaler = _create_grad_scaler(use_amp)
 
     criterion = build_loss(
         cfg["training"]["loss"],
@@ -292,7 +386,7 @@ def train_one_run(cfg, dataset_bundle=None, output_dir=None, apply_noise: bool =
         num_classes=num_classes,
     )
     optimizer = _create_optimizer(cfg, model)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(int(cfg["training"]["epochs"]), 1))
+    scheduler = _create_scheduler(cfg, optimizer)
 
     train_loader = _build_train_loader(cfg, bundle.train, device=device)
     val_loader = _build_loader(
@@ -310,48 +404,85 @@ def train_one_run(cfg, dataset_bundle=None, output_dir=None, apply_noise: bool =
         device=device,
     )
 
-    best_val_loss = float("inf")
-    best_macro_f1 = float("-inf")
-    best_ece = float("inf")
+    checkpoint_policy = cfg.get("evaluation", {}).get("checkpoint_policy", "best_val_macro_f1")
+    best_policy_value = _initial_best_value(checkpoint_policy)
     checkpoint_paths = {
         "last": str(output_dir / "last.ckpt"),
         "best_val_loss": str(output_dir / "best_val_loss.ckpt"),
         "best_val_macro_f1": str(output_dir / "best_val_macro_f1.ckpt"),
         "best_val_ece": str(output_dir / "best_val_ece.ckpt"),
     }
+    best_checkpoint_values = {
+        "best_val_loss": float("inf"),
+        "best_val_macro_f1": float("-inf"),
+        "best_val_ece": float("inf"),
+    }
+    selected_checkpoint_path = output_dir / checkpoint_name_for_policy(checkpoint_policy)
+    selected_epoch = None
+    early_stopping_patience = cfg["training"].get("early_stopping_patience")
+    patience_counter = 0
+    thresholds = _resolve_thresholds(cfg)
 
     history = []
     for epoch in range(int(cfg["training"]["epochs"])):
-        train_loss = _run_epoch(model, train_loader, criterion, optimizer, device)
+        train_loss = _run_epoch(model, train_loader, criterion, optimizer, scaler, device, use_amp=use_amp)
         scheduler.step()
-        val_outputs = _collect_predictions(model, val_loader, criterion, device, target_key="y_clean")
+        val_outputs = _collect_predictions(model, val_loader, criterion, device, target_key="y_clean", use_amp=use_amp)
         val_metrics = compute_all(
             y_true=val_outputs["labels"],
             probs=val_outputs["probs"],
-            thresholds=cfg.get("evaluation", {}).get("thresholds", [0.5]),
+            thresholds=thresholds,
         )
         val_metrics["loss"] = val_outputs["loss"]
         history.append({"epoch": epoch + 1, "train_loss": train_loss, "val": val_metrics})
 
         save_checkpoint(checkpoint_paths["last"], model, optimizer, epoch + 1, extra={"history": history})
-        if val_outputs["loss"] < best_val_loss:
-            best_val_loss = val_outputs["loss"]
-            save_checkpoint(checkpoint_paths["best_val_loss"], model, optimizer, epoch + 1, extra={"metric": "loss"})
-        if val_metrics["macro_f1"] > best_macro_f1:
-            best_macro_f1 = val_metrics["macro_f1"]
+        if val_outputs["loss"] < best_checkpoint_values["best_val_loss"]:
+            best_checkpoint_values["best_val_loss"] = float(val_outputs["loss"])
+            save_checkpoint(
+                checkpoint_paths["best_val_loss"],
+                model,
+                optimizer,
+                epoch + 1,
+                extra={"metric": "loss", "val_metrics": val_metrics, "history_entry": history[-1]},
+            )
+        if val_metrics["macro_f1"] > best_checkpoint_values["best_val_macro_f1"]:
+            best_checkpoint_values["best_val_macro_f1"] = float(val_metrics["macro_f1"])
             save_checkpoint(
                 checkpoint_paths["best_val_macro_f1"],
                 model,
                 optimizer,
                 epoch + 1,
-                extra={"metric": "macro_f1"},
+                extra={"metric": "macro_f1", "val_metrics": val_metrics, "history_entry": history[-1]},
             )
-        if val_metrics["ece"] < best_ece:
-            best_ece = val_metrics["ece"]
-            save_checkpoint(checkpoint_paths["best_val_ece"], model, optimizer, epoch + 1, extra={"metric": "ece"})
+        if val_metrics["ece"] < best_checkpoint_values["best_val_ece"]:
+            best_checkpoint_values["best_val_ece"] = float(val_metrics["ece"])
+            save_checkpoint(
+                checkpoint_paths["best_val_ece"],
+                model,
+                optimizer,
+                epoch + 1,
+                extra={"metric": "ece", "val_metrics": val_metrics, "history_entry": history[-1]},
+            )
 
+        current_policy_value = _metric_value_for_policy(checkpoint_policy, val_outputs, val_metrics)
+        if _checkpoint_improved(checkpoint_policy, current_policy_value, best_policy_value):
+            best_policy_value = current_policy_value
+            selected_epoch = epoch + 1
+            patience_counter = 0
+        else:
+            patience_counter += 1
+
+        if early_stopping_patience is not None and checkpoint_policy != "last":
+            if patience_counter >= int(early_stopping_patience):
+                break
+
+    checkpoint_payload = load_checkpoint(selected_checkpoint_path, model, map_location=device)
+    selected_epoch = int(checkpoint_payload.get("epoch", selected_epoch or 0))
+
+    train_eval_dataset = _build_eval_view_dataset(bundle.train, int(cfg["dataset"]["img_size"]))
     train_eval_loader = _build_loader(
-        bundle.train,
+        train_eval_dataset,
         batch_size=int(cfg["training"]["batch_size"]),
         shuffle=False,
         num_workers=int(cfg.get("num_workers", 2)),
@@ -364,9 +495,10 @@ def train_one_run(cfg, dataset_bundle=None, output_dir=None, apply_noise: bool =
         device,
         target_key="y_clean",
         return_embeddings=True,
+        use_amp=use_amp,
     )
-    val_outputs = _collect_predictions(model, val_loader, criterion, device, target_key="y_clean")
-    test_outputs = _collect_predictions(model, test_loader, criterion, device, target_key="y_clean")
+    val_outputs = _collect_predictions(model, val_loader, criterion, device, target_key="y_clean", use_amp=use_amp)
+    test_outputs = _collect_predictions(model, test_loader, criterion, device, target_key="y_clean", use_amp=use_amp)
 
     uncertainty_cfg = cfg.get("uncertainty", {})
     uncertainty_method = uncertainty_cfg.get("method", "softmax").lower()
@@ -388,10 +520,6 @@ def train_one_run(cfg, dataset_bundle=None, output_dir=None, apply_noise: bool =
     )
     test_probs_for_metrics = test_mc_outputs["mean_probs"] if test_mc_outputs is not None else test_outputs["probs"]
 
-    thresholds = cfg.get("evaluation", {}).get("thresholds")
-    if thresholds is None:
-        thresholds = default_threshold_grid().tolist()
-
     test_metrics = compute_all(test_outputs["labels"], test_probs_for_metrics, thresholds=thresholds)
     calibrated_metrics = compute_all(test_outputs["labels"], calibrated_test_probs, thresholds=thresholds)
     rc_uncal = risk_coverage_curve(test_outputs["labels"], test_probs_for_metrics, thresholds)
@@ -408,6 +536,18 @@ def train_one_run(cfg, dataset_bundle=None, output_dir=None, apply_noise: bool =
         "history": history,
         "noise": noise_info,
         "uncertainty_method": uncertainty_method,
+        "repair_protocol": (
+            "simulated_oracle_trusted_label_repair"
+            if cfg.get("active_learning", {}).get("enabled", False)
+            else "no_repair"
+        ),
+        "selected_checkpoint": {
+            "policy": checkpoint_policy,
+            "path": str(selected_checkpoint_path),
+            "epoch": selected_epoch,
+            "history_entry": checkpoint_payload.get("extra", {}).get("history_entry")
+            or _history_entry_for_epoch(history, selected_epoch),
+        },
         "test_uncalibrated": test_metrics,
         "test_calibrated": calibrated_metrics,
     }

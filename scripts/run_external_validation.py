@@ -34,8 +34,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=None, help="Optional evaluation batch size override.")
     parser.add_argument(
         "--checkpoint-name",
-        default="best_val_macro_f1.ckpt",
-        help="Checkpoint filename to load from each seed run.",
+        default=None,
+        help="Optional explicit checkpoint filename to load from each seed run.",
     )
     parser.add_argument(
         "--keep-unk",
@@ -109,6 +109,7 @@ def _write_seed_table(rows: list[dict[str, Any]], output_dir: Path) -> None:
         "test_cal_macro_f1",
         "test_cal_ece",
         "test_cal_macro_auroc",
+        "test_cal_aurc",
         "test_cal_coverage_at_0_5",
         "test_cal_risk_at_0_5",
     ]
@@ -147,6 +148,7 @@ def _write_aggregate_table(aggregates: dict[str, dict[str, float]], output_dir: 
         "test_cal_macro_f1",
         "test_cal_ece",
         "test_cal_macro_auroc",
+        "test_cal_aurc",
         "test_cal_coverage_at_0_5",
         "test_cal_risk_at_0_5",
     ]
@@ -176,6 +178,7 @@ def main() -> None:
     from trustquerynet.eval.selective import default_threshold_grid, risk_coverage_curve
     from trustquerynet.methods.losses import build_loss
     from trustquerynet.models.backbones import create_backbone
+    from trustquerynet.training.checkpointing import checkpoint_name_for_policy, load_checkpoint
     from trustquerynet.training.reproducibility import choose_device
     from trustquerynet.training.trainer import _collect_predictions, build_dataset_bundle
     from trustquerynet.uncertainty.temperature_scaling import fit_temperature
@@ -187,6 +190,9 @@ def main() -> None:
     manifest = _load_manifest(multiseed_run_dir)
     base_cfg = _load_base_config(multiseed_run_dir)
     device = choose_device(args.device)
+    checkpoint_name = args.checkpoint_name or checkpoint_name_for_policy(
+        base_cfg.get("evaluation", {}).get("checkpoint_policy", "best_val_macro_f1")
+    )
 
     external_bundle = prepare_isic2019_external_test_dataset(
         ground_truth_csv=args.ground_truth_csv,
@@ -227,9 +233,8 @@ def main() -> None:
         ).to(device)
 
         seed_dir = multiseed_run_dir / f"seed-{seed}"
-        checkpoint_path, rounds = _load_checkpoint_path(seed_dir, args.checkpoint_name)
-        checkpoint = torch.load(checkpoint_path, map_location=device)
-        model.load_state_dict(checkpoint["model_state_dict"])
+        checkpoint_path, rounds = _load_checkpoint_path(seed_dir, checkpoint_name)
+        checkpoint = load_checkpoint(checkpoint_path, model, map_location=device)
 
         val_outputs = _collect_predictions(model, val_loader, criterion, device, target_key="y_clean")
         external_outputs = _collect_predictions(model, external_loader, criterion, device, target_key="y_clean")
@@ -241,7 +246,7 @@ def main() -> None:
 
         thresholds = seed_cfg.get("evaluation", {}).get("thresholds")
         if thresholds is None:
-            thresholds = default_threshold_grid().tolist()
+            thresholds = default_threshold_grid(num=int(seed_cfg.get("evaluation", {}).get("num_thresholds", 101))).tolist()
 
         metrics_uncal = compute_all(external_outputs["labels"], external_outputs["probs"], thresholds=thresholds)
         metrics_cal = compute_all(external_outputs["labels"], calibrated_external_probs, thresholds=thresholds)
@@ -276,6 +281,12 @@ def main() -> None:
             "device": str(device),
             "history": [],
             "noise": {"noise_type": "external_validation", "seed": int(seed)},
+            "selected_checkpoint": {
+                "policy": base_cfg.get("evaluation", {}).get("checkpoint_policy", "best_val_macro_f1"),
+                "path": str(checkpoint_path),
+                "epoch": int(checkpoint.get("epoch", 0)),
+                "history_entry": checkpoint.get("extra", {}).get("history_entry"),
+            },
             "test_uncalibrated": metrics_uncal,
             "test_calibrated": metrics_cal,
         }

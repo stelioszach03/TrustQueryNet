@@ -58,6 +58,7 @@ def write_markdown(rows: list[dict], output_path: Path) -> None:
         "test_cal_accuracy",
         "test_cal_macro_f1",
         "test_cal_macro_auroc",
+        "test_cal_aurc",
         "test_uncal_ece",
         "test_cal_ece",
         "ece_improvement",

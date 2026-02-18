@@ -54,6 +54,9 @@ class BaseImageDataset(Dataset):
     def _load_pil_image(self, row: pd.Series) -> Image.Image:
         raise NotImplementedError
 
+    def clone_with_transform(self, transform):
+        return self.__class__(manifest=self.manifest.copy(), transform=transform)
+
     def __getitem__(self, index: int) -> Dict[str, Any]:
         row = self.manifest.iloc[index]
         image = self._load_pil_image(row)

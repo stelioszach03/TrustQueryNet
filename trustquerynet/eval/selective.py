@@ -25,5 +25,16 @@ def risk_coverage_curve(y_true, probs, thresholds) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def default_threshold_grid(num: int = 21) -> np.ndarray:
+def aurc_from_curve(rc_df: pd.DataFrame) -> float:
+    if rc_df.empty:
+        return 0.0
+    curve = rc_df[["coverage", "selective_risk"]].sort_values("coverage")
+    coverage = curve["coverage"].to_numpy(dtype=np.float64)
+    risk = curve["selective_risk"].to_numpy(dtype=np.float64)
+    if len(coverage) == 1:
+        return float(risk[0] * coverage[0])
+    return float(np.trapezoid(risk, coverage))
+
+
+def default_threshold_grid(num: int = 101) -> np.ndarray:
     return np.linspace(0.0, 1.0, num=num)

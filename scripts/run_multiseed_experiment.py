@@ -101,6 +101,7 @@ def _write_seed_table(rows: list[dict[str, Any]], output_dir: Path) -> None:
         "test_cal_macro_f1",
         "test_cal_ece",
         "test_cal_macro_auroc",
+        "test_cal_aurc",
         "test_cal_coverage_at_0_5",
         "test_cal_risk_at_0_5",
     ]
@@ -141,6 +142,7 @@ def _write_aggregate_table(aggregates: dict[str, dict[str, float]], output_dir: 
         "test_cal_macro_f1",
         "test_cal_ece",
         "test_cal_macro_auroc",
+        "test_cal_aurc",
         "test_cal_coverage_at_0_5",
         "test_cal_risk_at_0_5",
     ]

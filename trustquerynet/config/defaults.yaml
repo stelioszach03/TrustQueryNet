@@ -34,13 +34,18 @@ training:
   pretrained: true
   backbone: efficientnet_b0
   optimizer: adamw
+  amp: true
+  warmup_epochs: 0
+  early_stopping_patience:
 
 uncertainty:
   method: softmax
   mc_dropout_samples: 8
 
 evaluation:
-  thresholds: [0.3, 0.5, 0.7, 0.9]
+  thresholds:
+  num_thresholds: 101
+  checkpoint_policy: best_val_macro_f1
   bootstrap_samples: 0
   bootstrap_seed: 42
 

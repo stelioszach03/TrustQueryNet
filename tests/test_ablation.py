@@ -19,6 +19,7 @@ def test_summarize_multiseed_run_builds_ece_improvement_row(tmp_path: Path):
                 "test_cal_accuracy": {"mean": 0.80, "std": 0.01},
                 "test_cal_macro_f1": {"mean": 0.70, "std": 0.02},
                 "test_cal_macro_auroc": {"mean": 0.94, "std": 0.01},
+                "test_cal_aurc": {"mean": 0.11, "std": 0.01},
                 "test_uncal_ece": {"mean": 0.08, "std": 0.01},
                 "test_cal_ece": {"mean": 0.03, "std": 0.005},
                 "test_cal_coverage_at_0_5": {"mean": 0.93, "std": 0.01},
@@ -34,5 +35,6 @@ def test_summarize_multiseed_run_builds_ece_improvement_row(tmp_path: Path):
     assert row["label"] == "Full model"
     assert row["n_seeds"] == 5
     assert row["test_cal_accuracy"] == "0.8000 ± 0.0100"
+    assert row["test_cal_aurc"] == "0.1100 ± 0.0100"
     assert row["test_cal_ece"] == "0.0300 ± 0.0050"
     assert row["ece_improvement"] == "0.0500"

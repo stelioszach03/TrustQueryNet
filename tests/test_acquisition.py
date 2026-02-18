@@ -55,6 +55,21 @@ def test_hybrid_selection_returns_budgeted_candidates():
     assert len(np.unique(selected)) == 2
 
 
+def test_random_selection_is_reproducible_with_seed():
+    probs = np.array(
+        [
+            [0.8, 0.2],
+            [0.7, 0.3],
+            [0.6, 0.4],
+            [0.55, 0.45],
+        ]
+    )
+    selected_a = select_query_indices("random", budget=2, probs=probs, seed=123)
+    selected_b = select_query_indices("random", budget=2, probs=probs, seed=123)
+    assert np.array_equal(selected_a, selected_b)
+    assert len(np.unique(selected_a)) == 2
+
+
 def test_initial_trusted_indices_respect_fraction():
     labels = np.array([0, 0, 1, 1, 2, 2, 2, 2])
     trusted = _select_initial_trusted_indices(labels, fraction=0.25, seed=42)

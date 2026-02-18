@@ -117,7 +117,7 @@ def gather_run_summary(run_dir: Path) -> dict[str, Any]:
         run_type = "single_run"
 
     history = final_metrics.get("history", [])
-    best_entry = best_history_entry(history)
+    best_entry = final_metrics.get("selected_checkpoint", {}).get("history_entry") or best_history_entry(history)
     best_val = (best_entry or {}).get("val", {})
     test_uncal = final_metrics.get("test_uncalibrated", {})
     test_cal = final_metrics.get("test_calibrated", {})
@@ -136,16 +136,21 @@ def gather_run_summary(run_dir: Path) -> dict[str, Any]:
         "best_val_macro_f1": best_val.get("macro_f1"),
         "best_val_ece": best_val.get("ece"),
         "best_val_macro_auroc": best_val.get("macro_auroc"),
+        "best_val_aurc": best_val.get("aurc"),
         "test_uncal_accuracy": test_uncal.get("accuracy"),
         "test_uncal_macro_f1": test_uncal.get("macro_f1"),
         "test_uncal_ece": test_uncal.get("ece"),
         "test_uncal_macro_auroc": test_uncal.get("macro_auroc"),
+        "test_uncal_aurc": test_uncal.get("aurc"),
         "test_cal_accuracy": test_cal.get("accuracy"),
         "test_cal_macro_f1": test_cal.get("macro_f1"),
         "test_cal_ece": test_cal.get("ece"),
         "test_cal_macro_auroc": test_cal.get("macro_auroc"),
+        "test_cal_aurc": test_cal.get("aurc"),
         "test_cal_coverage_at_0_5": test_cal.get("coverage_at_0.5"),
         "test_cal_risk_at_0_5": test_cal.get("risk_at_0.5"),
+        "checkpoint_policy": final_metrics.get("selected_checkpoint", {}).get("policy"),
+        "selected_checkpoint_epoch": final_metrics.get("selected_checkpoint", {}).get("epoch"),
     }
 
     return {
@@ -207,6 +212,7 @@ def write_results_table(rows: list[dict[str, Any]], output_dir: Path) -> None:
         "test_cal_macro_f1",
         "test_cal_ece",
         "test_cal_macro_auroc",
+        "test_cal_aurc",
         "test_cal_coverage_at_0_5",
         "test_cal_risk_at_0_5",
     ]

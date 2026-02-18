@@ -1,76 +1,104 @@
 # TrustQueryNet Supplementary Appendix
 
+> This appendix currently mixes verified exploratory results with the corrected Q1 rerun scaffolding. The `q1_*.yaml` configs are the canonical rerun entrypoints after the new integrity fixes.
+
 ## A. Reproducibility summary
 
-The final paper-facing package is built around persisted artifacts:
+The reproducible package is built around persisted artifacts:
 
 - lesion-level split manifests
 - noise manifests
 - per-run config snapshots
+- explicit checkpoint-policy selection
 - per-seed metrics
 - aggregate multi-seed summaries
 - ablation tables
+- dense selective summaries including AURC
 - external-validation tables and plots
-
-The main internal and external claims are based on `5` seeds each.
+- overlap-audit reports
 
 ## B. Main run definitions
 
-### B.1 Main internal model
+### B.1 Exploratory internal model
 
-- config: [configs/full_ham10000_convnext_no_weighted.yaml](/Users/stelioszacharioudakis/Documents/TrustQueryNet/configs/full_ham10000_convnext_no_weighted.yaml)
+- config: [configs/full_ham10000_convnext_no_weighted.yaml](../configs/full_ham10000_convnext_no_weighted.yaml)
 - multi-seed run directory:
   `artifacts/runs/full-ham10000-convnext-no-weighted-multiseed`
 
-### B.2 Ablation models
+### B.2 Corrected Q1 rerun configs
 
-- weighted-sampler comparison:
-  [configs/full_ham10000_convnext.yaml](/Users/stelioszacharioudakis/Documents/TrustQueryNet/configs/full_ham10000_convnext.yaml)
-- no-query comparison:
-  [configs/full_ham10000_convnext_no_querying.yaml](/Users/stelioszacharioudakis/Documents/TrustQueryNet/configs/full_ham10000_convnext_no_querying.yaml)
+- repair:
+  [configs/q1_ham10000_convnext_repair.yaml](../configs/q1_ham10000_convnext_repair.yaml)
+- no repair:
+  [configs/q1_ham10000_convnext_no_repair.yaml](../configs/q1_ham10000_convnext_no_repair.yaml)
+- random repair:
+  [configs/q1_ham10000_convnext_random_repair.yaml](../configs/q1_ham10000_convnext_random_repair.yaml)
+- clean-label upper bound:
+  [configs/q1_ham10000_convnext_clean_upper.yaml](../configs/q1_ham10000_convnext_clean_upper.yaml)
+- robust-loss baseline:
+  [configs/q1_ham10000_convnext_gce_no_repair.yaml](../configs/q1_ham10000_convnext_gce_no_repair.yaml)
+- weighted secondary ablation:
+  [configs/q1_ham10000_convnext_weighted_secondary.yaml](../configs/q1_ham10000_convnext_weighted_secondary.yaml)
 
 ### B.3 External validation
 
 - dataset: official ISIC 2019 test set
 - evaluation entrypoint:
-  [run_external_validation.py](/Users/stelioszacharioudakis/Documents/TrustQueryNet/scripts/run_external_validation.py)
+  [scripts/run_external_validation.py](../scripts/run_external_validation.py)
 
 ## C. Reproduction commands
 
-### C.1 Internal multi-seed benchmark
+### C.1 Corrected internal repair benchmark
 
 ```bash
 python scripts/run_multiseed_experiment.py \
-  --config configs/full_ham10000_convnext_no_weighted.yaml \
+  --config configs/q1_ham10000_convnext_repair.yaml \
   --seeds 42 52 62 72 82 \
   --resume-existing
 ```
 
-### C.2 Ablation study
+### C.2 Repair baselines
 
 ```bash
 python scripts/run_multiseed_experiment.py \
-  --config configs/full_ham10000_convnext.yaml \
-  --seeds 42 52 62 72 82 \
-  --resume-existing
-```
-
-```bash
-python scripts/run_multiseed_experiment.py \
-  --config configs/full_ham10000_convnext_no_querying.yaml \
+  --config configs/q1_ham10000_convnext_no_repair.yaml \
   --seeds 42 52 62 72 82 \
   --resume-existing
 ```
 
 ```bash
-python scripts/export_ablation_table.py \
-  --runs-root artifacts/runs \
-  --run-spec full-ham10000-convnext-no-weighted-multiseed::Full\ model \
-  --run-spec full-ham10000-convnext-balanced-multiseed::Weighted\ sampler \
-  --run-spec full-ham10000-convnext-no-querying-multiseed::No\ query\ rounds
+python scripts/run_multiseed_experiment.py \
+  --config configs/q1_ham10000_convnext_random_repair.yaml \
+  --seeds 42 52 62 72 82 \
+  --resume-existing
 ```
 
-### C.3 External validation
+### C.3 Required anchors
+
+```bash
+python scripts/run_multiseed_experiment.py \
+  --config configs/q1_ham10000_convnext_clean_upper.yaml \
+  --seeds 42 52 62 \
+  --resume-existing
+```
+
+```bash
+python scripts/run_multiseed_experiment.py \
+  --config configs/q1_ham10000_convnext_gce_no_repair.yaml \
+  --seeds 42 52 62 \
+  --resume-existing
+```
+
+### C.4 Secondary weighted comparison
+
+```bash
+python scripts/run_multiseed_experiment.py \
+  --config configs/q1_ham10000_convnext_weighted_secondary.yaml \
+  --seeds 42 52 62 72 82 \
+  --resume-existing
+```
+
+### C.5 External validation
 
 ```bash
 python scripts/download_isic2019_external.py \
@@ -79,16 +107,29 @@ python scripts/download_isic2019_external.py \
 
 ```bash
 python scripts/run_external_validation.py \
-  --multiseed-run-dir artifacts/runs/full-ham10000-convnext-no-weighted-multiseed \
+  --multiseed-run-dir artifacts/runs/q1-ham10000-convnext-repair-multiseed \
   --ground-truth-csv data/isic2019_external_test/ISIC_2019_Test_GroundTruth.csv \
   --metadata-csv data/isic2019_external_test/ISIC_2019_Test_Metadata.csv \
   --image-dir data/isic2019_external_test/images \
   --num-workers 0
 ```
 
+### C.6 Overlap audit
+
+```bash
+python scripts/audit_ham10000_isic2019_overlap.py \
+  --ham-metadata-csv data/ham10000/HAM10000_metadata.csv \
+  --ham-image-dir data/ham10000/images \
+  --ham-split-csv data/ham10000/splits.csv \
+  --isic-ground-truth-csv data/isic2019_external_test/ISIC_2019_Test_GroundTruth.csv \
+  --isic-metadata-csv data/isic2019_external_test/ISIC_2019_Test_Metadata.csv \
+  --isic-image-dir data/isic2019_external_test/images \
+  --output-dir artifacts/overlap/ham10000-isic2019
+```
+
 ## D. Label mapping for ISIC 2019
 
-The external dataset uses challenge labels that do not perfectly match the HAM10000 taxonomy. The current verified mapping is:
+The external dataset uses challenge labels that do not perfectly match the HAM10000 taxonomy. The current mapping is:
 
 - `MEL -> mel`
 - `NV -> nv`
@@ -100,20 +141,21 @@ The external dataset uses challenge labels that do not perfectly match the HAM10
 - `VASC -> vasc`
 - `UNK -> filtered`
 
-This mapping preserves the current `7`-class internal training space without introducing an unsupported extra class during external evaluation.
+This preserves the current `7`-class internal training space without introducing an unsupported extra class during external evaluation.
 
 ## E. Data statements
 
 - HAM10000 is used as the primary development dataset.
-- ISIC 2019 test is used only for external validation.
+- ISIC 2019 test is used for external validation.
 - Both were downloaded from official ISIC challenge / archive endpoints.
 - The current project is intended for research and portfolio use, not clinical deployment.
 
 ## F. Ethics and limitation statements
 
-Recommended paper wording:
+Recommended wording:
 
 - This study evaluates retrospective dermatoscopic datasets and does not constitute a clinical decision-support system.
+- The trusted-label repair protocol is simulated oracle supervision rather than prospective human annotation.
 - External validation reveals a substantial performance drop under dataset shift.
 - Internal temperature scaling does not reliably improve calibration on the external test set.
 - No prospective, reader-study, or clinician-in-the-loop evaluation is included.

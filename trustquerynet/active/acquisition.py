@@ -9,6 +9,9 @@ from trustquerynet.active.selectors import core_set_scores, kcenter_greedy_selec
 
 def compute_scores(method, probs_or_samples, embeddings=None) -> np.ndarray:
     method = method.lower()
+    if method == "random":
+        probs = np.asarray(probs_or_samples, dtype=np.float64)
+        return np.zeros(probs.shape[0], dtype=np.float64)
     if method in {"least_confidence", "uncertainty"}:
         probs = np.asarray(probs_or_samples, dtype=np.float64)
         return 1.0 - probs.max(axis=1)
@@ -40,6 +43,7 @@ def select_query_indices(
     embeddings: np.ndarray | None = None,
     selected_mask: np.ndarray | None = None,
     shortlist_factor: int = 4,
+    seed: int | None = None,
 ) -> np.ndarray:
     method = method.lower()
     if budget <= 0:
@@ -65,6 +69,10 @@ def select_query_indices(
     if len(candidate_indices) == 0:
         return np.asarray([], dtype=np.int64)
     budget = min(budget, len(candidate_indices))
+
+    if method == "random":
+        rng = np.random.default_rng(seed)
+        return np.sort(rng.choice(candidate_indices, size=budget, replace=False).astype(np.int64))
 
     if method == "core_set":
         if embeddings is None:

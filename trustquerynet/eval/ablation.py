@@ -47,6 +47,7 @@ def summarize_multiseed_run(run_dir: str | Path, *, label: str | None = None) ->
         "test_cal_accuracy": format_mean_std(aggregate.get("test_cal_accuracy")),
         "test_cal_macro_f1": format_mean_std(aggregate.get("test_cal_macro_f1")),
         "test_cal_macro_auroc": format_mean_std(aggregate.get("test_cal_macro_auroc")),
+        "test_cal_aurc": format_mean_std(aggregate.get("test_cal_aurc")),
         "test_uncal_ece": format_mean_std(aggregate.get("test_uncal_ece")),
         "test_cal_ece": format_mean_std(aggregate.get("test_cal_ece")),
         "ece_improvement": f"{ece_improvement:.4f}" if ece_improvement is not None else "",
@@ -55,6 +56,7 @@ def summarize_multiseed_run(run_dir: str | Path, *, label: str | None = None) ->
         "test_cal_accuracy_mean": aggregate.get("test_cal_accuracy", {}).get("mean"),
         "test_cal_macro_f1_mean": aggregate.get("test_cal_macro_f1", {}).get("mean"),
         "test_cal_macro_auroc_mean": aggregate.get("test_cal_macro_auroc", {}).get("mean"),
+        "test_cal_aurc_mean": aggregate.get("test_cal_aurc", {}).get("mean"),
         "test_uncal_ece_mean": aggregate.get("test_uncal_ece", {}).get("mean"),
         "test_cal_ece_mean": aggregate.get("test_cal_ece", {}).get("mean"),
     }
