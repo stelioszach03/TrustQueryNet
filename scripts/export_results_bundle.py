@@ -84,6 +84,109 @@ def final_round_dir(run_dir: Path) -> Path:
     return round_dirs[-1] if round_dirs else run_dir
 
 
+def _is_multiseed_dir(run_dir: Path) -> bool:
+    return (run_dir / "aggregate_results.json").exists() and any(run_dir.glob("seed-*"))
+
+
+def _load_multiseed_summary(run_dir: Path) -> dict[str, Any]:
+    aggregate = load_json(run_dir / "aggregate_results.json")
+    manifest = load_json(run_dir / "multiseed_manifest.json") if (run_dir / "multiseed_manifest.json").exists() else {}
+    resolved_base_cfg = load_json(run_dir / "resolved_base_config.yaml") if False else None
+    seed_dirs = sorted(path for path in run_dir.glob("seed-*") if path.is_dir())
+
+    sample_final_metrics = None
+    sample_report = None
+    sample_run_type = "multi_seed"
+    sample_rounds = None
+    sample_initial_trusted = None
+    sample_queried = None
+
+    for seed_dir in seed_dirs:
+        report_path = seed_dir / "active_learning_report.json"
+        metrics_path = seed_dir / "metrics.json"
+        if report_path.exists():
+            sample_report = load_json(report_path)
+            sample_final_metrics = sample_report.get("final_metrics")
+            sample_run_type = "active_learning_multiseed"
+            sample_rounds = len(sample_report.get("round_metrics", []))
+            sample_initial_trusted = len(sample_report.get("initial_trusted_indices", []))
+            sample_queried = sum(len(chunk) for chunk in sample_report.get("selected_indices_by_round", []))
+            break
+        if metrics_path.exists():
+            sample_final_metrics = load_json(metrics_path)
+            sample_run_type = "single_run_multiseed"
+            sample_rounds = 1
+            sample_initial_trusted = 0
+            sample_queried = 0
+            break
+
+    best_val = {
+        "accuracy": aggregate.get("best_val_accuracy", {}).get("mean"),
+        "macro_f1": aggregate.get("best_val_macro_f1", {}).get("mean"),
+        "ece": aggregate.get("best_val_ece", {}).get("mean"),
+        "macro_auroc": aggregate.get("best_val_macro_auroc", {}).get("mean"),
+        "aurc": aggregate.get("best_val_aurc", {}).get("mean"),
+    }
+    test_uncal = {
+        "accuracy": aggregate.get("test_uncal_accuracy", {}).get("mean"),
+        "macro_f1": aggregate.get("test_uncal_macro_f1", {}).get("mean"),
+        "ece": aggregate.get("test_uncal_ece", {}).get("mean"),
+        "macro_auroc": aggregate.get("test_uncal_macro_auroc", {}).get("mean"),
+        "aurc": aggregate.get("test_uncal_aurc", {}).get("mean"),
+    }
+    test_cal = {
+        "accuracy": aggregate.get("test_cal_accuracy", {}).get("mean"),
+        "macro_f1": aggregate.get("test_cal_macro_f1", {}).get("mean"),
+        "ece": aggregate.get("test_cal_ece", {}).get("mean"),
+        "macro_auroc": aggregate.get("test_cal_macro_auroc", {}).get("mean"),
+        "aurc": aggregate.get("test_cal_aurc", {}).get("mean"),
+        "coverage_at_0.5": aggregate.get("test_cal_coverage_at_0_5", {}).get("mean"),
+        "risk_at_0.5": aggregate.get("test_cal_risk_at_0_5", {}).get("mean"),
+    }
+
+    summary_row = {
+        "run_name": run_dir.name,
+        "run_type": sample_run_type,
+        "rounds": sample_rounds,
+        "initial_trusted_count": sample_initial_trusted,
+        "queried_count": sample_queried,
+        "device": sample_final_metrics.get("device") if sample_final_metrics else None,
+        "noise_type": sample_final_metrics.get("noise", {}).get("noise_type") if sample_final_metrics else None,
+        "realized_flip_rate": aggregate.get("realized_flip_rate", {}).get("mean"),
+        "best_val_accuracy": best_val.get("accuracy"),
+        "best_val_macro_f1": best_val.get("macro_f1"),
+        "best_val_ece": best_val.get("ece"),
+        "best_val_macro_auroc": best_val.get("macro_auroc"),
+        "best_val_aurc": best_val.get("aurc"),
+        "test_uncal_accuracy": test_uncal.get("accuracy"),
+        "test_uncal_macro_f1": test_uncal.get("macro_f1"),
+        "test_uncal_ece": test_uncal.get("ece"),
+        "test_uncal_macro_auroc": test_uncal.get("macro_auroc"),
+        "test_uncal_aurc": test_uncal.get("aurc"),
+        "test_cal_accuracy": test_cal.get("accuracy"),
+        "test_cal_macro_f1": test_cal.get("macro_f1"),
+        "test_cal_ece": test_cal.get("ece"),
+        "test_cal_macro_auroc": test_cal.get("macro_auroc"),
+        "test_cal_aurc": test_cal.get("aurc"),
+        "test_cal_coverage_at_0_5": test_cal.get("coverage_at_0.5"),
+        "test_cal_risk_at_0_5": test_cal.get("risk_at_0.5"),
+        "checkpoint_policy": sample_final_metrics.get("selected_checkpoint", {}).get("policy") if sample_final_metrics else None,
+        "selected_checkpoint_epoch": sample_final_metrics.get("selected_checkpoint", {}).get("epoch") if sample_final_metrics else None,
+    }
+
+    return {
+        "run_dir": str(run_dir),
+        "run_name": run_dir.name,
+        "run_type": sample_run_type,
+        "final_round_dir": str(final_round_dir(seed_dirs[0])) if seed_dirs else str(run_dir),
+        "summary_row": sanitize_value(summary_row),
+        "aggregate_results": sanitize_value(aggregate),
+        "sample_final_metrics": sanitize_value(sample_final_metrics),
+        "active_learning_report": sanitize_value(sample_report),
+        "multiseed_manifest": sanitize_value(manifest),
+    }
+
+
 def copy_file_if_exists(source: Path, destination: Path) -> None:
     if not source.exists():
         return
@@ -100,6 +203,9 @@ def copy_directory_if_exists(source: Path, destination: Path) -> None:
 
 
 def gather_run_summary(run_dir: Path) -> dict[str, Any]:
+    if _is_multiseed_dir(run_dir):
+        return _load_multiseed_summary(run_dir)
+
     active_report_path = run_dir / "active_learning_report.json"
     if active_report_path.exists():
         report = load_json(active_report_path)
@@ -165,6 +271,15 @@ def gather_run_summary(run_dir: Path) -> dict[str, Any]:
 
 
 def copy_run_artifacts(run_dir: Path, target_dir: Path, include_checkpoints: bool) -> None:
+    if _is_multiseed_dir(run_dir):
+        for name in {"aggregate_results.json", "aggregate_results.md", "multiseed_manifest.json", "resolved_base_config.yaml", "seed_results.csv", "seed_results.md"}:
+            copy_file_if_exists(run_dir / name, target_dir / name)
+
+        seed_dirs = sorted(path for path in run_dir.glob("seed-*") if path.is_dir())
+        for seed_dir in seed_dirs:
+            copy_run_artifacts(seed_dir, target_dir / seed_dir.name, include_checkpoints=include_checkpoints)
+        return
+
     active_report_path = run_dir / "active_learning_report.json"
     if active_report_path.exists():
         copy_file_if_exists(active_report_path, target_dir / "active_learning_report.json")
