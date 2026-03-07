@@ -1,92 +1,29 @@
-# TrustQueryNet: Working Manuscript Draft for Budgeted Trusted-Label Repair under Simulated Label Corruption and External Shift
-
-> This draft is now a manuscript scaffold for the corrected Q1 rerun suite. The quantitative results quoted here are the **currently verified exploratory results**, not the final post-fix publication claims.
+# Internal Gains Do Not Guarantee External Trustworthiness in Dermatoscopic Classification Under Simulated Label Corruption
 
 ## Abstract
 
-This project studies trustworthy dermatoscopic image classification under noisy supervision and limited trusted annotation. We build a modular pipeline around HAM10000 that combines lesion-level group-aware splitting, class-dependent label noise, **budgeted trusted-label repair under simulated oracle supervision**, post-hoc calibration, and selective prediction analysis. The current verified exploratory model is a ConvNeXt-Tiny configuration trained without weighted sampling, using cross-entropy with label smoothing and entropy-based repair rounds. Across `5` seeds on internal HAM10000 evaluation, it achieves `0.8454 ± 0.0054` calibrated accuracy, `0.7265 ± 0.0080` macro-F1, `0.9599 ± 0.0048` macro-AUROC, and `0.0375 ± 0.0105` expected calibration error. External validation on the official ISIC 2019 test set reveals a substantial generalization drop to `0.5551 ± 0.0263` calibrated accuracy and `0.4256 ± 0.0312` macro-F1, highlighting distribution shift as the main remaining challenge. The corrected Q1 rerun suite will replace the exploratory comparisons with a deconfounded no-repair baseline, a matched-budget random-repair baseline, a clean-label upper bound, and a robust-loss baseline.
+We study trustworthy dermatoscopic lesion classification under simulated class-dependent label corruption, budgeted trusted-label repair under simulated oracle supervision, post-hoc calibration, and selective prediction. TrustQueryNet is built around lesion-level group-aware HAM10000 splits, persistent noise and split manifests, multi-seed evaluation, and external validation on the official ISIC 2019 test set. Using a corrected ConvNeXt-Tiny training protocol with explicit best-checkpoint evaluation, the main repair configuration achieved `0.8350 ± 0.0059` internal calibrated accuracy, `0.7152 ± 0.0216` macro-F1, and `0.9382 ± 0.0133` macro-AUROC across five seeds. However, strong baselines remained highly competitive: no-repair training reached `0.7145 ± 0.0130` internal macro-F1, random repair reached `0.7105 ± 0.0239`, and a clean-label upper bound reached `0.7330 ± 0.0288`. External validation revealed a substantial performance drop for all approaches. On ISIC 2019, the repair model reached `0.5692 ± 0.0145` calibrated accuracy and `0.4427 ± 0.0117` macro-F1, compared with `0.5630 ± 0.0078` and `0.4288 ± 0.0123` for no repair, and `0.5591 ± 0.0203` and `0.4311 ± 0.0328` for random repair. Internal temperature scaling did not resolve external calibration fragility, and generalized cross-entropy collapsed under the chosen corruption regime. An overlap audit found zero exact duplicate images between HAM10000 and the ISIC 2019 external slice. The resulting evidence supports a restrained but clinically relevant conclusion: modest internal gains from trusted-label repair do not imply broad external trustworthiness, and repair strategies must be judged against strong baselines, including random repair.
 
 ## 1. Introduction
 
-Medical image classification work often reports only in-distribution discrimination, even though real use depends on label quality, confidence quality, and robustness under shift. Dermatoscopic lesion classification is a good example: classes are heavily imbalanced, labels may come from mixed-quality supervision pipelines, and model confidence matters because high-confidence errors can be clinically costly.
+Dermatoscopic lesion classification is a useful test bed for trustworthy machine learning because it combines severe class imbalance, multiple images per lesion, dataset shift across collections, and imperfect labels. In this setting, a model can look strong in-distribution while remaining poorly calibrated or externally brittle. TrustQueryNet was developed to evaluate these issues directly rather than treating them as secondary diagnostics.
 
-TrustQueryNet was built to make those concerns first-class rather than post-hoc:
+The project combines four ideas in one reproducible pipeline:
 
-- noisy-label learning is explicit rather than ignored
-- trusted supervision is treated as limited and budgeted
-- repair of noisy labels is simulated explicitly
-- calibration and selective prediction are evaluated directly
-- all stages write persistent artifacts for reproducibility
+- lesion-level, group-aware splitting for HAM10000
+- explicit class-dependent noisy-label simulation
+- budgeted trusted-label repair under simulated oracle supervision
+- calibration and selective prediction analysis under both internal and external evaluation
 
-The resulting codebase is both a research artifact and an engineering artifact: local development, Colab runs, export bundles, and paper tables all use the same package and config stack.
+The final paper should not be framed as a new method paper. Its value is as a rigorous, externally validated trustworthy-ML study that asks a practical question: when labels are noisy and trusted correction is budget-limited, do internal gains from repair survive stronger baselines and external shift?
 
-## 2. Method
+## 2. Methods
 
 ### 2.1 Data and split protocol
 
-The primary development dataset is HAM10000, a `7`-class dermatoscopic benchmark with multiple images per lesion and severe class imbalance. To prevent leakage, TrustQueryNet performs lesion-level group-aware splitting and persists the split manifest to disk. Clean labels, observed labels, and trust/repair state are tracked separately inside the dataset manifest.
+HAM10000 is the primary development dataset. TrustQueryNet performs lesion-level grouping so that images from the same lesion do not leak across train, validation, and test partitions. Split manifests are written to disk and reused across runs. Clean labels and observed labels are tracked separately, alongside trust and repair state.
 
-### 2.2 Noise model
-
-Training labels are corrupted with a class-dependent transition matrix designed to reflect plausible visual confusion among lesion categories. This gives the pipeline a reproducible noisy-label setting while preserving the original clean labels for evaluation and simulated correction.
-
-### 2.3 Model family and optimization
-
-The current verified HAM10000 slice uses:
-
-- EfficientNet-B0 as a fast pilot baseline
-- ConvNeXt-Tiny as the main model family
-- cross-entropy, generalized cross-entropy, and symmetric cross-entropy implementations
-- optional weighted sampling for imbalance control
-- temperature scaling for post-hoc calibration
-
-The exploratory internal model that currently anchors the repo is:
-
-- `full-ham10000-convnext-no-weighted`
-- ConvNeXt-Tiny
-- cross-entropy with `0.05` label smoothing
-- transition-matrix noise
-- entropy-based trusted-label repair
-- `5` fixed-split seeds
-
-### 2.4 Budgeted trusted-label repair
-
-The current repair protocol should be described precisely. After label corruption, a fraction of the training set is marked as initially trusted. The model is trained on the resulting noisy/trusted mix, uncertainty scores are computed on the unlabeled pool, and a fixed budget of selected samples is repaired by replacing `y_observed` with `y_clean`. This is a **simulated oracle supervision** protocol rather than a prospective active-learning deployment study.
-
-### 2.5 Trustworthiness components
-
-TrustQueryNet evaluates:
-
-- macro-F1 and macro-AUROC for class-balanced discrimination
-- expected calibration error (ECE) and reliability diagrams
-- dense risk-coverage summaries and AURC
-- failure behavior under external distribution shift
-
-These components frame the project as trustworthy ML rather than a pure benchmark-optimization exercise.
-
-## 3. Experimental protocol
-
-### 3.1 Current exploratory internal evaluation
-
-All internal HAM10000 experiments use the same lesion-level split logic and a fixed transition-matrix noise configuration. The current exploratory results are reported across `5` seeds with `mean ± std`.
-
-### 3.2 Corrected Q1 rerun protocol
-
-The corrected rerun suite should replace the exploratory comparisons with:
-
-| Variant | Purpose |
-| --- | --- |
-| `Trusted repair` | main corrected result |
-| `Random repair` | matched-budget repair baseline |
-| `No repair` | zero-budget repair baseline |
-| `Clean-label upper bound` | anchor for noisy supervision |
-| `GCE no-repair` | robust-loss baseline |
-
-Weighted sampling should remain a secondary ablation unless corrected reruns show that it is central.
-
-### 3.3 External validation
-
-External validation is performed on the official ISIC 2019 test set. To match the HAM10000-style `7`-class taxonomy, ISIC 2019 labels are mapped as follows:
+The external dataset is the official ISIC 2019 test set. Labels are mapped into the HAM10000-style `7`-class space:
 
 - `MEL -> mel`
 - `NV -> nv`
@@ -96,108 +33,103 @@ External validation is performed on the official ISIC 2019 test set. To match th
 - `BKL -> bkl`
 - `DF -> df`
 - `VASC -> vasc`
-- `UNK` is filtered
+- `UNK` filtered
 
-This produces an external evaluation set that is clinically related but distributionally distinct from HAM10000. Before submission, this external slice must also be screened for exact and near-duplicate overlap against HAM10000.
+### 2.2 Noise and repair protocol
 
-## 4. Current exploratory results
+Observed training labels are corrupted by a fixed class-dependent transition matrix. A fraction of samples is marked as initially trusted, and subsequent repair rounds replace `y_observed` with `y_clean` for selected samples. This is a retrospective simulation of limited expert correction, not a prospective clinician-in-the-loop study. The most accurate description is therefore **budgeted trusted-label repair under simulated oracle supervision**.
 
-### 4.1 Internal multi-seed performance
+### 2.3 Models and evaluation
 
-The current exploratory internal result uses the no-weighted-sampler ConvNeXt-Tiny model:
+The final corrected study uses ConvNeXt-Tiny with:
 
-| Setting | Accuracy | Macro-F1 | ECE | Macro-AUROC | Coverage@0.5 | Risk@0.5 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `Exploratory full model (no weighted sampler)` | `0.8454 ± 0.0054` | `0.7265 ± 0.0080` | `0.0375 ± 0.0105` | `0.9599 ± 0.0048` | `0.9467 ± 0.0039` | `0.1303 ± 0.0077` |
+- `12` epochs
+- cross-entropy with `0.05` label smoothing for the main repair and comparison baselines
+- explicit best-checkpoint selection by validation macro-F1
+- temperature scaling
+- dense selective metrics including AURC
+- multi-seed aggregation
 
-This is the strongest verified exploratory internal result, but it should not yet be presented as the final publication headline until the corrected rerun suite is complete.
+We report calibrated accuracy, macro-F1, macro-AUROC, ECE, AURC, coverage at confidence `0.5`, and risk at confidence `0.5`.
 
-### 4.2 Exploratory ablation signals
+## 3. Experimental Protocol
 
-The current exploratory comparisons suggest two useful directions:
+The corrected internal evidence suite includes:
 
-- repair helps relative to the exploratory no-query comparison
-- weighted sampling does not help in the current noisy-label setting
+- `Repair`: budgeted entropy-based trusted-label repair
+- `No repair`: identical training recipe without repair rounds
+- `Random repair`: matched repair budget with random sample selection
+- `Clean upper`: clean-label upper bound without simulated corruption
+- `GCE no repair`: robust-loss baseline under the same noisy setup
 
-However, the corrected paper must replace the exploratory no-query comparison with a deconfounded no-repair baseline and a matched-budget random-repair baseline before making a publication-grade repair claim.
+The main external evidence suite evaluates the three most relevant operational variants:
+
+- `Repair external`
+- `No repair external`
+- `Random repair external`
+
+An image-overlap audit between HAM10000 and ISIC 2019 reports exact-hash matches and perceptual-hash near-duplicate candidates.
+
+## 4. Results
+
+### 4.1 Internal main comparison
+
+| Setting | Accuracy | Macro-F1 | ECE | Macro-AUROC | AURC | Coverage@0.5 | Risk@0.5 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `Repair` | `0.8350 ± 0.0059` | `0.7152 ± 0.0216` | `0.0445 ± 0.0090` | `0.9382 ± 0.0133` | `0.0728 ± 0.0186` | `0.9525 ± 0.0074` | `0.1428 ± 0.0054` |
+| `No repair` | `0.8321 ± 0.0071` | `0.7145 ± 0.0130` | `0.0356 ± 0.0075` | `0.9460 ± 0.0128` | `0.0622 ± 0.0093` | `0.9480 ± 0.0066` | `0.1449 ± 0.0078` |
+| `Random repair` | `0.8319 ± 0.0051` | `0.7105 ± 0.0239` | `0.0356 ± 0.0071` | `0.9521 ± 0.0128` | `0.0588 ± 0.0145` | `0.9376 ± 0.0100` | `0.1402 ± 0.0107` |
+
+The internal comparison does not support a “repair wins everywhere” story. Repair produces a small point-performance gain in accuracy and macro-F1, but no-repair and random-repair remain extremely competitive, and both outperform repair on some trust metrics such as ECE, AUROC, and AURC.
+
+### 4.2 Noisy-label anchors
+
+| Setting | Accuracy | Macro-F1 | ECE | Macro-AUROC | AURC | Coverage@0.5 | Risk@0.5 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `Repair` | `0.8350 ± 0.0059` | `0.7152 ± 0.0216` | `0.0445 ± 0.0090` | `0.9382 ± 0.0133` | `0.0728 ± 0.0186` | `0.9525 ± 0.0074` | `0.1428 ± 0.0054` |
+| `Clean upper` | `0.8521 ± 0.0055` | `0.7330 ± 0.0288` | `0.0389 ± 0.0176` | `0.9583 ± 0.0076` | `0.0502 ± 0.0095` | `0.9618 ± 0.0107` | `0.1306 ± 0.0089` |
+| `GCE no repair` | `0.6774 ± 0.0012` | `0.1224 ± 0.0122` | `0.0268 ± 0.0381` | `0.5782 ± 0.1279` | `0.2399 ± 0.1059` | `0.9639 ± 0.0626` | `0.3044 ± 0.0327` |
+
+The clean upper bound shows moderate remaining headroom, while the generalized cross-entropy baseline fails dramatically under the chosen noisy-label regime. This negative result is important: robust-loss substitution is not automatically beneficial in this setting.
 
 ### 4.3 External validation
 
-The same exploratory internal model was evaluated on the official ISIC 2019 test set:
+| Setting | Accuracy | Macro-F1 | ECE | Macro-AUROC | AURC | Coverage@0.5 | Risk@0.5 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `Repair external` | `0.5692 ± 0.0145` | `0.4427 ± 0.0117` | `0.2000 ± 0.0253` | `0.8125 ± 0.0180` | `0.2804 ± 0.0299` | `0.8526 ± 0.0230` | `0.3805 ± 0.0228` |
+| `No repair external` | `0.5630 ± 0.0078` | `0.4288 ± 0.0123` | `0.2016 ± 0.0123` | `0.8168 ± 0.0154` | `0.2749 ± 0.0183` | `0.8498 ± 0.0264` | `0.3838 ± 0.0073` |
+| `Random repair external` | `0.5591 ± 0.0203` | `0.4311 ± 0.0328` | `0.2149 ± 0.0395` | `0.8114 ± 0.0337` | `0.2905 ± 0.0669` | `0.8654 ± 0.0383` | `0.3964 ± 0.0269` |
 
-| External setting | Accuracy | Macro-F1 | ECE | Macro-AUROC | Coverage@0.5 | Risk@0.5 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `ISIC 2019 external test` | `0.5551 ± 0.0263` | `0.4256 ± 0.0312` | `0.2236 ± 0.0462` | `0.8237 ± 0.0158` | `0.8576 ± 0.0315` | `0.3966 ± 0.0357` |
+All methods degrade sharply on ISIC 2019 relative to internal HAM10000 evaluation. Repair remains modestly ahead of the two comparison baselines on external accuracy and macro-F1, but does not dominate all trust metrics. The overall lesson is not that repair solves external robustness, but that even modest internal gains must be interpreted cautiously under shift.
 
-Compared with internal evaluation, this is a substantial drop:
+### 4.4 Overlap audit
 
-- accuracy falls from `0.8454` to `0.5551`
-- macro-F1 falls from `0.7265` to `0.4256`
-- macro-AUROC falls from `0.9599` to `0.8237`
+The overlap audit found:
 
-This is the clearest current evidence of distribution shift and should remain central to the final paper.
+- `10015` HAM10000 samples
+- `6191` external ISIC 2019 samples after label filtering/mapping
+- `0` exact duplicate images
+- `14185` perceptual-hash candidate pairs at `dHash <= 4`
 
-### 4.4 Calibration behavior
-
-Internal temperature scaling produces only a small ECE gain in the exploratory internal slice:
-
-- internal uncalibrated ECE: `0.0387 ± 0.0070`
-- internal calibrated ECE: `0.0375 ± 0.0105`
-
-On the external ISIC 2019 test set, temperature scaling fitted on the internal validation set does not transfer well:
-
-- external uncalibrated ECE: `0.2011 ± 0.0372`
-- external calibrated ECE: `0.2236 ± 0.0462`
-
-This is an important trustworthy-ML result in its own right: calibration fitted in-distribution should not be assumed to remain reliable under external shift.
+The zero exact matches are the key integrity result. The perceptual-hash list is a coarse candidate screen for manual or secondary review and should not be interpreted as confirmed leakage.
 
 ## 5. Discussion
 
-The current repo already supports three defensible exploratory claims.
+The final evidence supports a restrained but useful conclusion. Budgeted trusted-label repair is not a universally dominant intervention in this setting. It yields only a modest advantage over no-repair and random-repair baselines in point performance, while other trust metrics remain mixed. This is exactly why the stronger baseline suite matters: without random repair and no repair, it would have been easy to overstate the value of repair.
 
-First, the internal HAM10000 pipeline is strong and stable enough to justify a serious applied paper path rather than a toy demo.
+The external findings are the most important part of the paper. Internal HAM10000 performance is strong for all competitive variants, but all of them degrade substantially on ISIC 2019. That drop is not a side note; it is the central trustworthy-ML result. Similarly, post-hoc calibration learned in-distribution does not remove external confidence fragility.
 
-Second, the exploratory ablations are informative rather than cosmetic. They suggest that repair may help and that weighted sampling may not be beneficial in the present noisy-label setting, but they are not yet the final publication comparisons.
-
-Third, the external validation result materially strengthens the manuscript. The drop on ISIC 2019 shows that the model is not simply “solved” and that trustworthiness claims should be made with explicit awareness of domain shift.
-
-The corrected paper should therefore organize itself around three sharper claims:
-
-- internal improvements do not guarantee external trustworthiness
-- budgeted trusted-label repair must beat random repair, not just no repair
-- calibration learned in-distribution may fail under external shift
+The paper is therefore strongest when framed as an externally validated experimental study rather than a method paper. Its contribution is evidence: which interventions remain competitive, which fail, and how internal trust signals do or do not transfer externally.
 
 ## 6. Limitations
 
-The current package should still be framed honestly:
-
-- the current quoted numbers are exploratory results, not the final corrected reruns
-- external validation is limited to one external dataset
-- the external class mapping collapses `SCC` into `akiec` and filters `UNK`
-- calibration transfer under shift is weak
-- the manuscript does not yet include full paired significance testing
-- there is no prospective clinical evaluation or reader study
-- advanced extensions such as SelectiveNet, DivideMix, or SWAG are outside the verified slice
+- The repair protocol is simulated oracle supervision, not prospective expert annotation.
+- External validation is limited to one external dataset.
+- Perceptual-hash overlap candidates were not exhaustively adjudicated manually.
+- Repair does not dominate all trust metrics, so claims must remain modest.
+- No clinician reader study or deployment evaluation is included.
+- The work does not introduce a new learning algorithm.
 
 ## 7. Conclusion
 
-TrustQueryNet already supports a credible Q1-oriented upgrade path. The repo has strong exploratory internal results, a useful external validation slice, and now an implementation-ready corrected rerun family with explicit checkpoint-policy evaluation, deterministic repair scoring, dense selective metrics, a random-repair baseline, a clean-label upper bound, a robust-loss baseline scaffold, and overlap-audit tooling. The next step is not new method invention; it is disciplined rerunning and honest reporting.
-
-## 8. Main-paper assets to include
-
-Recommended main-paper assets after corrected reruns:
-
-- main internal comparison table: trusted repair vs random repair vs no repair
-- clean-label upper-bound / noisy-loss anchor table
-- internal reliability diagram and risk-coverage curve for the corrected main model
-- external reliability diagram and risk-coverage curve for the corrected main model
-- internal-vs-external summary figure
-- classwise external performance figure
-
-Recommended supplementary assets:
-
-- seed-level internal results table
-- seed-level external validation table
-- overlap-audit report
-- dataset mapping note for ISIC 2019 labels
-- exact reproduction commands and config paths
+TrustQueryNet is now a credible applied research package for trustworthy dermatoscopic classification under noisy supervision. The final evidence shows that internal gains do not guarantee external trustworthiness, that trusted-label repair must be judged against strong baselines including random repair, and that robust-loss substitution can fail outright in this regime. These are publishable applied findings when presented honestly and with external validation.
