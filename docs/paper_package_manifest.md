@@ -16,6 +16,16 @@ This package is the paper-facing documentation set for the corrected Q1-oriented
   - condensed portfolio / application variants
 - [../README.md](../README.md)
   - repo-level summary aligned with the final evidence slice
+- [../paper/trustquerynet_abstract.pdf](../paper/trustquerynet_abstract.pdf)
+  - standalone abstract PDF
+- [../paper/trustquerynet_paper.pdf](../paper/trustquerynet_paper.pdf)
+  - compiled manuscript PDF
+- [../paper/references.bib](../paper/references.bib)
+  - bibliography used by the LaTeX manuscript
+- [../paper/references_used.md](../paper/references_used.md)
+  - plain-language checklist of the references currently grounding the paper
+- [../paper/trustquerynet_paper.tex](../paper/trustquerynet_paper.tex)
+  - full LaTeX manuscript source
 
 ## Current paper position
 

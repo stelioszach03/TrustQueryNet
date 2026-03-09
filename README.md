@@ -267,6 +267,13 @@ Project-facing write-up assets live here:
 - [docs/portfolio_copy.md](docs/portfolio_copy.md)
 - [docs/supplementary_appendix.md](docs/supplementary_appendix.md)
 
+Paper-facing LaTeX sources and compiled PDFs live here:
+
+- [paper/README.md](paper/README.md)
+- [paper/trustquerynet_abstract.pdf](paper/trustquerynet_abstract.pdf)
+- [paper/trustquerynet_paper.pdf](paper/trustquerynet_paper.pdf)
+- [paper/references.bib](paper/references.bib)
+
 ## Current boundaries
 
 This repo now contains the corrected core evidence suite, but it does not yet claim:
