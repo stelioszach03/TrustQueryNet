@@ -154,7 +154,7 @@ def main() -> None:
     random_dir = (runs_root / args.random_repair_run).resolve()
     repair_external_dir = (runs_root / args.repair_external_run).resolve()
     no_repair_external_dir = (runs_root / args.no_repair_external_run).resolve()
-    random_external_dir = (runs_root / args.random_external_run).resolve()
+    random_external_dir = (runs_root / args.random_repair_external_run).resolve()
 
     internal_seed_dir, internal_score = representative_internal_seed(repair_dir)
     external_seed_dir, external_score = representative_external_seed(repair_external_dir)
