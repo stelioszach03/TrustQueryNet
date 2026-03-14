@@ -12,6 +12,8 @@ This directory contains the paper-facing LaTeX sources for the corrected TrustQu
   - bibliography used by the manuscript
 - `references_used.md`
   - plain-language list of the references currently grounding the paper
+- `paper_figures/`
+  - exported internal/external paper figures and figure manifest
 - `build_pdfs.sh`
   - reproducible local build script
 

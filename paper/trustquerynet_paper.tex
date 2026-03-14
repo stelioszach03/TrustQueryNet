@@ -100,6 +100,8 @@ The corrected internal evidence suite includes:
 
 The main external evidence suite evaluates the three most relevant operational variants: repair, no repair, and random repair. An image-overlap audit between HAM10000 and ISIC 2019 reports exact-hash matches and perceptual-hash near-duplicate candidates.
 
+For visualization, calibrated reliability and risk-coverage plots are shown for the representative seed whose calibrated macro-F1 is closest to the multiseed mean of the repair run. In the final exports, this seed was \texttt{seed-72} for both the internal and external repair comparisons.
+
 \section{Results}
 
 \subsection{Internal main comparison}
@@ -122,6 +124,32 @@ Random repair & $0.8319 \pm 0.0051$ & $0.7105 \pm 0.0239$ & $0.0356 \pm 0.0071$ 
 \end{table}
 
 The internal comparison does not support a ``repair wins everywhere'' story. Repair produces a small point-performance gain in accuracy and macro-F1, but no-repair and random-repair remain highly competitive, and both outperform repair on some trust metrics such as ECE, AUROC, and AURC.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.92\linewidth]{paper_figures/internal_external_summary.png}
+\caption{Final internal-vs-external summary across the three main operational settings. Internal point performance remains strong, but all variants degrade substantially under external shift.}
+\label{fig:summary}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{paper_figures/internal_reliability_calibrated.png}
+
+\small (a) Internal calibrated reliability
+\end{minipage}
+\hfill
+\begin{minipage}{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{paper_figures/internal_risk_coverage_calibrated.png}
+
+\small (b) Internal calibrated risk-coverage
+\end{minipage}
+\caption{Representative internal repair plots from \texttt{seed-72}, selected as the seed whose calibrated macro-F1 is closest to the multiseed mean.}
+\label{fig:internal-plots}
+\end{figure}
 
 \subsection{Noisy-label anchors}
 
@@ -164,6 +192,25 @@ Random repair external & $0.5591 \pm 0.0203$ & $0.4311 \pm 0.0328$ & $0.2149 \pm
 \end{table}
 
 All methods degrade sharply on ISIC 2019 relative to internal HAM10000 evaluation. Repair remains modestly ahead of the two comparison baselines on external accuracy and macro-F1, but it does not dominate all trust metrics. The overall lesson is not that repair solves external robustness, but that even modest internal gains must be interpreted cautiously under shift.
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{paper_figures/external_reliability_calibrated.png}
+
+\small (a) External calibrated reliability
+\end{minipage}
+\hfill
+\begin{minipage}{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{paper_figures/external_risk_coverage_calibrated.png}
+
+\small (b) External calibrated risk-coverage
+\end{minipage}
+\caption{Representative external repair plots from \texttt{seed-72}. The visual shift from the internal curves is consistent with the large external degradation in accuracy, macro-F1, ECE, and AURC.}
+\label{fig:external-plots}
+\end{figure}
 
 \subsection{Overlap audit}
 

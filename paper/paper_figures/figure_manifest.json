@@ -1,0 +1,16 @@
+{
+  "internal_representative_seed": "seed-72",
+  "internal_representative_macro_f1": 0.7129560438213632,
+  "internal_plot_source": "/content/drive/MyDrive/TrustQueryNet/artifacts/final_evidence/q1-ham10000-convnext-repair-final-e12-multiseed/seed-72/active_round_2",
+  "external_representative_seed": "seed-72",
+  "external_representative_macro_f1": 0.4444034573788495,
+  "external_plot_source": "/content/drive/MyDrive/TrustQueryNet/artifacts/final_evidence/q1-ham10000-convnext-repair-final-e12-multiseed-external-isic2019-test/seed-72",
+  "files": [
+    "external_reliability_calibrated.png",
+    "external_risk_coverage_calibrated.png",
+    "internal_external_summary.png",
+    "internal_reliability_calibrated.png",
+    "internal_risk_coverage_calibrated.png",
+    "overlap_report.json"
+  ]
+}

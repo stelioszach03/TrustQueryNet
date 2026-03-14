@@ -26,6 +26,14 @@ This package is the paper-facing documentation set for the corrected Q1-oriented
   - plain-language checklist of the references currently grounding the paper
 - [../paper/trustquerynet_paper.tex](../paper/trustquerynet_paper.tex)
   - full LaTeX manuscript source
+- [../paper/paper_figures/internal_external_summary.png](../paper/paper_figures/internal_external_summary.png)
+  - compact internal-vs-external summary figure
+- [../paper/paper_figures/internal_reliability_calibrated.png](../paper/paper_figures/internal_reliability_calibrated.png)
+  - representative internal calibrated reliability plot
+- [../paper/paper_figures/external_reliability_calibrated.png](../paper/paper_figures/external_reliability_calibrated.png)
+  - representative external calibrated reliability plot
+- [../paper/paper_figures/figure_manifest.json](../paper/paper_figures/figure_manifest.json)
+  - figure provenance and representative-seed metadata
 
 ## Current paper position
 
