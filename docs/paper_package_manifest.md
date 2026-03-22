@@ -10,6 +10,8 @@ This package is the paper-facing documentation set for the corrected Q1-oriented
   - working full manuscript draft with final verified results
 - [final_results_tables.md](./final_results_tables.md)
   - paper-ready result tables in one place
+- [../artifacts/paper_tables/significance/paired_significance.md](../artifacts/paper_tables/significance/paired_significance.md)
+  - compact paired seed-level statistical comparison table for the prespecified main comparisons
 - [supplementary_appendix.md](./supplementary_appendix.md)
   - reproducibility, run definitions, overlap summary, and commands
 - [portfolio_copy.md](./portfolio_copy.md)
@@ -47,6 +49,7 @@ Recommended positioning:
 Recommended lead claim:
 
 - internal gains do not guarantee external trustworthiness
+- budgeted trusted-label repair must beat random repair, not just no repair
 
 ## Current venue strategy
 
@@ -56,4 +59,4 @@ Recommended lead claim:
 
 ## Packaging note
 
-This manifest covers the repo-side paper documents. The larger experiment artifact bundle is produced separately with `scripts/export_results_bundle.py`.
+This manifest covers the repo-side paper documents. The larger experiment artifact bundle is produced separately with `scripts/export_results_bundle.py`, while the paired statistical comparison table is regenerated from `artifacts/final_evidence/*/seed_results.csv` via `scripts/export_significance_table.py`.

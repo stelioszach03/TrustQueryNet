@@ -48,6 +48,12 @@ Recommended workflow:
 - use [notebooks/trustquerynet_local.ipynb](notebooks/trustquerynet_local.ipynb) for local-first exploration
 - use [notebooks/trustquerynet_colab.ipynb](notebooks/trustquerynet_colab.ipynb) in browser Colab UI for Drive-backed runs and artifact persistence
 
+Repository map:
+
+- [configs/README.md](configs/README.md) explains which config families are final paper-facing versus preserved development provenance
+- [artifacts/README.md](artifacts/README.md) explains which lightweight artifact summaries are intentionally tracked in git
+- [paper/README.md](paper/README.md) describes the manuscript sources and paper rebuild workflow
+
 ## Current verified results
 
 The numbers below are the **current corrected results** from the locked `e12` ConvNeXt-Tiny publication recipe. They are the main evidence slice for the paper-facing trustworthy-ML study in this repo.
@@ -83,6 +89,7 @@ Why these corrected results matter:
 - generalized cross-entropy collapses under the chosen corruption regime
 - external validation reveals a substantial domain-shift gap even after internal calibration
 - an overlap audit found `0` exact duplicate images between HAM10000 and the mapped ISIC 2019 external slice
+- paired seed-level comparisons on calibrated macro-F1 keep the main claims intentionally modest rather than threshold-driven
 
 ## Q1 rerun config family
 
@@ -256,6 +263,21 @@ python scripts/export_results_bundle.py \
   --bundle-name trustquerynet-q1-paper-bundle
 ```
 
+To export the paper-facing paired significance table from the locked final evidence slice:
+
+```bash
+python scripts/export_significance_table.py \
+  --runs-root artifacts/final_evidence \
+  --repair-run q1-ham10000-convnext-repair-final-e12-multiseed \
+  --no-repair-run q1-ham10000-convnext-no-repair-final-e12-multiseed \
+  --random-repair-run q1-ham10000-convnext-random-repair-final-e12-multiseed \
+  --gce-run q1-ham10000-convnext-gce-no-repair-final-e12-multiseed \
+  --repair-external-run q1-ham10000-convnext-repair-final-e12-multiseed-external-isic2019-test \
+  --no-repair-external-run q1-ham10000-convnext-no-repair-final-e12-multiseed-external-isic2019-test \
+  --random-repair-external-run q1-ham10000-convnext-random-repair-final-e12-multiseed-external-isic2019-test \
+  --output-dir artifacts/paper_tables/significance
+```
+
 ## Paper and portfolio docs
 
 Project-facing write-up assets live here:
@@ -274,13 +296,19 @@ Paper-facing LaTeX sources and compiled PDFs live here:
 - [paper/trustquerynet_paper.pdf](paper/trustquerynet_paper.pdf)
 - [paper/references.bib](paper/references.bib)
 
+Lightweight final evidence summaries that support the public paper package live here:
+
+- [artifacts/final_evidence](artifacts/final_evidence)
+- [artifacts/paper_tables](artifacts/paper_tables)
+- [artifacts/overlap/ham10000-isic2019/overlap_report.json](artifacts/overlap/ham10000-isic2019/overlap_report.json)
+
 ## Current boundaries
 
 This repo now contains the corrected core evidence suite, but it does not yet claim:
 
-- full paired significance testing throughout the manuscript
+- exhaustive per-metric or per-class significance testing beyond the prespecified main comparisons
 - clinician-in-the-loop or prospective evaluation
 - manual adjudication of every perceptual-hash overlap candidate
 - advanced methods such as SelectiveNet, DivideMix, or SWAG as verified final results
 
-The implemented foundation is intentionally modular so statistical reporting, figure refinement, and manuscript polishing can proceed without rewriting the core pipeline.
+The implemented foundation is intentionally modular so additional reporting or manuscript polish can proceed without rewriting the core pipeline, but the current paper claim should stay centered on **budgeted trusted-label repair under simulated oracle supervision** and its limited external trustworthiness gains.

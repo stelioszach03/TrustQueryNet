@@ -20,12 +20,16 @@ This list covers the primary references explicitly grounding the current manuscr
 
 5. Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q. Weinberger. "On Calibration of Modern Neural Networks." *ICML*, 2017.
    - Used for temperature scaling and calibration framing.
-6. Yonatan Geifman and Ran El-Yaniv. "Selective Classification for Deep Neural Networks." *NeurIPS*, 2017.
+6. Yaniv Ovadia, Emily Fertig, Jie Ren, Zachary Nado, D. Sculley, Sebastian Nowozin, Joshua V. Dillon, Balaji Lakshminarayanan, and Jasper Snoek. "Can You Trust Your Model's Uncertainty? Evaluating Predictive Uncertainty Under Dataset Shift." *NeurIPS*, 2019.
+   - Used to ground the claim that calibration and uncertainty behavior can degrade materially under dataset shift.
+7. Yonatan Geifman and Ran El-Yaniv. "Selective Classification for Deep Neural Networks." *NeurIPS*, 2017.
    - Used for selective prediction, risk-coverage framing, and AURC-style evaluation context.
 
-## Noisy-Label Baseline
+## Noisy-Label Framing and Baseline
 
-7. Zhilu Zhang and Mert R. Sabuncu. "Generalized Cross Entropy Loss for Training Deep Neural Networks with Noisy Labels." *NeurIPS*, 2018.
+8. Hwanjun Song, Minseok Kim, Dongmin Park, Yooju Shin, and Jae-Gil Lee. "Learning From Noisy Labels With Deep Neural Networks: A Survey." *IEEE Transactions on Neural Networks and Learning Systems*, 2023.
+   - Used to position the paper as a deliberately narrow evaluation study rather than a broad noisy-label benchmark.
+9. Zhilu Zhang and Mert R. Sabuncu. "Generalized Cross Entropy Loss for Training Deep Neural Networks with Noisy Labels." *NeurIPS*, 2018.
    - Used for the GCE baseline.
 
 ## Note

@@ -1,5 +1,7 @@
 # TrustQueryNet Final Results Tables
 
+All tables below report calibrated test metrics from the corrected `e12` evidence slice with explicit `best_val_macro_f1` checkpoint selection.
+
 ## Internal Main Comparison
 
 | Setting | Accuracy | Macro-F1 | ECE | Macro-AUROC | AURC | Coverage@0.5 | Risk@0.5 |
@@ -37,3 +39,21 @@ Interpretation:
 
 - The `0` exact duplicate count is the key data-integrity result.
 - The dHash candidate list is a coarse screen and should not be treated as confirmed overlap without manual adjudication.
+
+## Paired Significance Snapshot
+
+Primary paper-facing significance reporting uses paired seed-level comparisons on calibrated macro-F1, with calibrated accuracy retained as a secondary endpoint. Full machine-readable outputs live under [artifacts/paper_tables/significance](../artifacts/paper_tables/significance).
+
+| Comparison | Metric | Shared seeds | Delta (repair minus comparator) | 95% paired bootstrap CI | Exact sign-flip p |
+| --- | --- | --- | ---: | --- | ---: |
+| `Repair vs no repair` | `Internal calibrated macro-F1` | `42,52,62,72,82` | `0.0008` | `[-0.0231, 0.0217]` | `1.0000` |
+| `Repair vs random repair` | `Internal calibrated macro-F1` | `42,52,62,72,82` | `0.0045` | `[-0.0112, 0.0262]` | `0.8750` |
+| `Repair vs GCE no repair` | `Internal calibrated macro-F1` | `42,52,62` | `0.5918` | `[0.5552, 0.6332]` | `0.2500` |
+| `Repair vs no repair` | `External calibrated macro-F1` | `42,52,62,72,82` | `0.0139` | `[-0.0044, 0.0281]` | `0.1875` |
+| `Repair vs random repair` | `External calibrated macro-F1` | `42,52,62,72,82` | `0.0117` | `[-0.0097, 0.0329]` | `0.4375` |
+
+Interpretation:
+
+- the main repair claim remains modest rather than decisive
+- repair is clearly separated from GCE on effect size, but that anchor uses only the shared three-seed subset
+- the no-repair and random-repair baselines remain competitive under both internal and external seed-paired reporting

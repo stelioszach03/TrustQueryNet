@@ -85,13 +85,14 @@ def final_round_dir(run_dir: Path) -> Path:
 
 
 def _is_multiseed_dir(run_dir: Path) -> bool:
-    return (run_dir / "aggregate_results.json").exists() and any(run_dir.glob("seed-*"))
+    """Return True when a run directory follows the multiseed export layout."""
+    return (run_dir / "aggregate_results.json").exists() and (run_dir / "seed_results.csv").exists()
 
 
 def _load_multiseed_summary(run_dir: Path) -> dict[str, Any]:
+    """Summarize a multiseed run directory without requiring full heavy artifacts."""
     aggregate = load_json(run_dir / "aggregate_results.json")
     manifest = load_json(run_dir / "multiseed_manifest.json") if (run_dir / "multiseed_manifest.json").exists() else {}
-    resolved_base_cfg = load_json(run_dir / "resolved_base_config.yaml") if False else None
     seed_dirs = sorted(path for path in run_dir.glob("seed-*") if path.is_dir())
 
     sample_final_metrics = None
@@ -203,6 +204,7 @@ def copy_directory_if_exists(source: Path, destination: Path) -> None:
 
 
 def gather_run_summary(run_dir: Path) -> dict[str, Any]:
+    """Load either a single-run or multiseed summary into one export-friendly structure."""
     if _is_multiseed_dir(run_dir):
         return _load_multiseed_summary(run_dir)
 
@@ -271,6 +273,7 @@ def gather_run_summary(run_dir: Path) -> dict[str, Any]:
 
 
 def copy_run_artifacts(run_dir: Path, target_dir: Path, include_checkpoints: bool) -> None:
+    """Copy the smallest useful subset of artifacts for a portable export bundle."""
     if _is_multiseed_dir(run_dir):
         for name in {"aggregate_results.json", "aggregate_results.md", "multiseed_manifest.json", "resolved_base_config.yaml", "seed_results.csv", "seed_results.md"}:
             copy_file_if_exists(run_dir / name, target_dir / name)
@@ -307,6 +310,7 @@ def copy_run_artifacts(run_dir: Path, target_dir: Path, include_checkpoints: boo
 
 
 def write_results_table(rows: list[dict[str, Any]], output_dir: Path) -> None:
+    """Write compact CSV and Markdown tables for the selected export runs."""
     if not rows:
         return
 

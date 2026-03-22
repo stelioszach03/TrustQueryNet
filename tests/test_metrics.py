@@ -2,7 +2,12 @@ import numpy as np
 import torch
 
 from trustquerynet.eval.metrics import compute_all
-from trustquerynet.eval.stats_tests import bootstrap_metric_ci, bootstrap_metric_difference_ci, paired_permutation_test
+from trustquerynet.eval.stats_tests import (
+    bootstrap_metric_ci,
+    bootstrap_metric_difference_ci,
+    bootstrap_paired_mean_difference_ci,
+    paired_permutation_test,
+)
 from trustquerynet.uncertainty.temperature_scaling import fit_temperature
 
 
@@ -53,6 +58,22 @@ def test_bootstrap_metric_difference_ci_returns_bounds():
     assert result["lower"] <= result["mean"] <= result["upper"]
 
 
+def test_bootstrap_paired_mean_difference_ci_returns_bounds():
+    result = bootstrap_paired_mean_difference_ci(
+        [0.8, 0.82, 0.81, 0.79],
+        [0.7, 0.72, 0.71, 0.69],
+        n_bootstrap=64,
+        seed=11,
+    )
+    assert result["lower"] <= result["mean"] <= result["upper"]
+
+
 def test_paired_permutation_test_returns_probability():
     result = paired_permutation_test([0.8, 0.82, 0.81], [0.7, 0.72, 0.71], n_permutations=200, seed=7)
     assert 0.0 <= result["p_value"] <= 1.0
+
+
+def test_paired_permutation_test_exact_mode_matches_sign_flip_resolution():
+    result = paired_permutation_test([1.0, 1.0, 1.0], [0.0, 0.0, 0.0], exact=True)
+    assert result["exact"] is True
+    assert abs(result["p_value"] - 0.25) < 1e-9

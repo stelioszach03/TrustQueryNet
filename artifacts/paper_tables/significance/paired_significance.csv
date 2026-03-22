@@ -1,0 +1,11 @@
+split,comparison,metric,metric_key,lhs_label,rhs_label,n_pairs,shared_seeds,lhs_mean,rhs_mean,mean_difference,ci_lower,ci_upper,p_value,exact_permutation
+internal,Repair vs no repair,Calibrated macro-F1,test_cal_macro_f1,Repair,No repair,5,"42,52,62,72,82",0.715165458979348,0.7144776488730988,0.0006878101062493869,-0.023065401482451574,0.02173036162090729,1.0,True
+internal,Repair vs random repair,Calibrated macro-F1,test_cal_macro_f1,Repair,Random repair,5,"42,52,62,72,82",0.715165458979348,0.7105396069372899,0.00462585204205832,-0.011227509850208062,0.026171865401284,0.875,True
+internal,Repair vs GCE no repair,Calibrated macro-F1,test_cal_macro_f1,Repair,GCE no repair,3,"42,52,62",0.7141208722897389,0.12235555848588092,0.591765313803858,0.5551992848852869,0.6331571787587211,0.25,True
+internal,Repair vs no repair,Calibrated accuracy,test_cal_accuracy,Repair,No repair,5,"42,52,62,72,82",0.8350168350168351,0.8320538720538719,0.002962962962962967,-0.006464646464646462,0.013063973063973089,0.625,True
+internal,Repair vs random repair,Calibrated accuracy,test_cal_accuracy,Repair,Random repair,5,"42,52,62,72,82",0.8350168350168351,0.831919191919192,0.0030976430976430436,-0.0033670033670034406,0.010505050505050462,0.6875,True
+internal,Repair vs GCE no repair,Calibrated accuracy,test_cal_accuracy,Repair,GCE no repair,3,"42,52,62",0.8338945005611672,0.6774410774410775,0.15645342312008972,0.1515151515151515,0.16363636363636358,0.25,True
+external,Repair vs no repair,Calibrated macro-F1,test_cal_macro_f1,Repair,No repair,5,"42,52,62,72,82",0.4426892257661666,0.42879448441248214,0.013894741353684459,-0.004440336819283142,0.028144828957826752,0.1875,True
+external,Repair vs random repair,Calibrated macro-F1,test_cal_macro_f1,Repair,Random repair,5,"42,52,62,72,82",0.4426892257661666,0.43107988707304373,0.011609338693122816,-0.009693711242260072,0.03291238862850571,0.4375,True
+external,Repair vs no repair,Calibrated accuracy,test_cal_accuracy,Repair,No repair,5,"42,52,62,72,82",0.5692456792117591,0.5630431271200129,0.006202552091746116,-0.005911807462445462,0.018316911645937694,0.375,True
+external,Repair vs random repair,Calibrated accuracy,test_cal_accuracy,Repair,Random repair,5,"42,52,62,72,82",0.5692456792117591,0.5591019221450493,0.010143757066709757,-0.00869003392020673,0.028977548053626245,0.375,True

@@ -1,0 +1,103 @@
+experiment_name: q1-ham10000-convnext-gce-no-repair
+seed: 42
+deterministic: false
+output_dir: /content/drive/MyDrive/TrustQueryNet/artifacts/final_evidence/q1-ham10000-convnext-gce-no-repair-final-e12
+device: auto
+num_workers: 0
+dataset:
+  name: ham10000
+  root: data
+  image_dir: /content/drive/MyDrive/HAM10000/images
+  metadata_csv: /content/drive/MyDrive/HAM10000/HAM10000_metadata.csv
+  split_csv: /content/drive/MyDrive/HAM10000/splits.csv
+  save_split_csv: /content/drive/MyDrive/HAM10000/splits.csv
+  val_ratio: 0.15
+  test_ratio: 0.15
+  img_size: 224
+  max_train_samples: null
+  max_val_samples: null
+  max_test_samples: null
+noise:
+  type: transition_matrix
+  rate: 0.2
+  matrix:
+  - - 0.92
+    - 0.0
+    - 0.03
+    - 0.0
+    - 0.05
+    - 0.0
+    - 0.0
+  - - 0.0
+    - 0.93
+    - 0.04
+    - 0.0
+    - 0.03
+    - 0.0
+    - 0.0
+  - - 0.01
+    - 0.01
+    - 0.85
+    - 0.0
+    - 0.11
+    - 0.0
+    - 0.02
+  - - 0.0
+    - 0.0
+    - 0.02
+    - 0.95
+    - 0.01
+    - 0.0
+    - 0.02
+  - - 0.02
+    - 0.0
+    - 0.1
+    - 0.0
+    - 0.86
+    - 0.01
+    - 0.01
+  - - 0.0
+    - 0.0
+    - 0.01
+    - 0.0
+    - 0.01
+    - 0.98
+    - 0.0
+  - - 0.0
+    - 0.0
+    - 0.02
+    - 0.01
+    - 0.0
+    - 0.0
+    - 0.97
+training:
+  epochs: 12
+  batch_size: 32
+  lr: 0.0001
+  weight_decay: 0.0001
+  label_smoothing: 0.0
+  loss: generalized_cross_entropy
+  sampler: shuffle
+  pretrained: true
+  backbone: convnext_tiny
+  optimizer: adamw
+  amp: true
+  warmup_epochs: 2
+  early_stopping_patience: 4
+uncertainty:
+  method: softmax
+  mc_dropout_samples: 8
+evaluation:
+  thresholds: null
+  num_thresholds: 101
+  checkpoint_policy: best_val_macro_f1
+  bootstrap_samples: 0
+  bootstrap_seed: 42
+active_learning:
+  enabled: false
+  method: entropy
+  query_size: 128
+  rounds: 1
+  shortlist_factor: 4
+  initial_clean_fraction: 0.0
+config_path: configs/colab_q1-ham10000-convnext-gce-no-repair-final-e12.yaml

@@ -23,12 +23,12 @@
 \maketitle
 
 \begin{abstract}
-We study trustworthy dermatoscopic lesion classification under simulated class-dependent label corruption, budgeted trusted-label repair under simulated oracle supervision, post-hoc calibration, and selective prediction. TrustQueryNet is built around lesion-level group-aware HAM10000 splits, persistent noise and split manifests, multi-seed evaluation, and external validation on the official ISIC 2019 test set. Using a corrected ConvNeXt-Tiny training protocol with explicit best-checkpoint evaluation, the main repair configuration achieved $0.8350 \pm 0.0059$ internal calibrated accuracy, $0.7152 \pm 0.0216$ macro-F1, and $0.9382 \pm 0.0133$ macro-AUROC across five seeds. However, strong baselines remained highly competitive: no-repair training reached $0.7145 \pm 0.0130$ internal macro-F1, random repair reached $0.7105 \pm 0.0239$, and a clean-label upper bound reached $0.7330 \pm 0.0288$. External validation revealed a substantial performance drop for all approaches. On ISIC 2019, the repair model reached $0.5692 \pm 0.0145$ calibrated accuracy and $0.4427 \pm 0.0117$ macro-F1, compared with $0.5630 \pm 0.0078$ and $0.4288 \pm 0.0123$ for no repair, and $0.5591 \pm 0.0203$ and $0.4311 \pm 0.0328$ for random repair. Internal temperature scaling did not resolve external calibration fragility, and generalized cross-entropy collapsed under the chosen corruption regime. An overlap audit found zero exact duplicate images between HAM10000 and the ISIC 2019 external slice. The resulting evidence supports a restrained but clinically relevant conclusion: modest internal gains from trusted-label repair do not imply broad external trustworthiness, and repair strategies must be judged against strong baselines, including random repair.
+We present TrustQueryNet, an externally validated dermatoscopic classification study under simulated class-dependent label corruption, budgeted trusted-label repair under simulated oracle supervision, post-hoc calibration, and selective prediction. The pipeline combines lesion-level HAM10000 splits, persistent noise manifests, explicit best-checkpoint evaluation, multi-seed aggregation, and external testing on the official ISIC 2019 test set. With the corrected ConvNeXt-Tiny recipe, repair reached $0.8350 \pm 0.0059$ internal calibrated accuracy and $0.7152 \pm 0.0216$ internal macro-F1 across five seeds. However, strong baselines remained close: no repair reached $0.7145 \pm 0.0130$ internal macro-F1, random repair reached $0.7105 \pm 0.0239$, and a clean-label upper bound reached $0.7330 \pm 0.0288$. On external ISIC 2019, all methods degraded sharply. Repair reached $0.5692 \pm 0.0145$ calibrated accuracy and $0.4427 \pm 0.0117$ macro-F1, versus $0.5630 \pm 0.0078$ and $0.4288 \pm 0.0123$ for no repair, and $0.5591 \pm 0.0203$ and $0.4311 \pm 0.0328$ for random repair. Internal temperature scaling did not remove external calibration fragility, and generalized cross-entropy collapsed under the chosen corruption regime. An overlap audit found zero exact duplicate images between HAM10000 and the mapped ISIC 2019 external slice. Overall, the study shows that modest internal gains from trusted-label repair do not guarantee external trustworthiness and must be judged against strong baselines, including random repair.
 \end{abstract}
 
 \section{Introduction}
 
-Dermatoscopic lesion classification is a useful test bed for trustworthy machine learning because it combines severe class imbalance, multiple images per lesion, dataset shift across collections, and imperfect labels. The HAM10000 dataset remains one of the most common dermatoscopic benchmarks for this problem domain \citep{tschandl2018ham10000}. At the same time, clinically realistic external validation is known to be substantially harder than internal benchmarking, as highlighted by the ISIC 2019 challenge validation study \citep{combalia2022isic2019}. In this setting, a model can look strong in-distribution while remaining poorly calibrated or externally brittle.
+Dermatoscopic lesion classification is a useful test bed for trustworthy machine learning because it combines severe class imbalance, multiple images per lesion, dataset shift across collections, and imperfect labels. The HAM10000 dataset remains one of the most common dermatoscopic benchmarks for this problem domain \citep{tschandl2018ham10000}. At the same time, clinically realistic external validation is known to be substantially harder than internal benchmarking, as highlighted by the ISIC 2019 challenge validation study \citep{combalia2022isic2019}. More broadly, calibration that appears acceptable on an internal validation split can still degrade under distribution shift \citep{ovadia2019uncertainty}. In this setting, a model can look strong in-distribution while remaining poorly calibrated or externally brittle.
 
 TrustQueryNet was developed to evaluate these issues directly rather than treating them as secondary diagnostics. The project combines four ideas in one reproducible pipeline:
 
@@ -41,11 +41,15 @@ TrustQueryNet was developed to evaluate these issues directly rather than treati
 
 This paper is not positioned as a new method paper. Its value is as a rigorous, externally validated trustworthy-ML study asking a practical question: when labels are noisy and trusted correction is budget-limited, do modest internal gains from repair survive stronger baselines and external shift?
 
+We make three deliberately narrow contributions. First, we provide a corrected evidence slice for noisy dermatoscopic classification with lesion-level grouping, persistent corruption manifests, and explicit best-checkpoint evaluation. Second, we compare budgeted trusted-label repair against both no-repair and matched-budget random-repair baselines under a locked ConvNeXt-Tiny recipe rather than against a weak baseline alone. Third, we evaluate calibration and selective behavior both internally and externally, showing that internal confidence diagnostics do not transfer cleanly by default.
+
 \section{Related Work}
 
-HAM10000 provides a widely used dermatoscopic benchmark with multiple images per lesion and a clinically relevant class taxonomy \citep{tschandl2018ham10000}. For external robustness, the ISIC 2019 challenge validation study is especially relevant because it demonstrates how skin lesion classifiers degrade under more realistic distribution shift and out-of-training-category conditions \citep{combalia2022isic2019}.
+HAM10000 provides a widely used dermatoscopic benchmark with multiple images per lesion and a clinically relevant class taxonomy \citep{tschandl2018ham10000}. For external robustness, the ISIC 2019 challenge validation study is especially relevant because it demonstrates how skin lesion classifiers degrade under more realistic distribution shift and out-of-training-category conditions \citep{combalia2022isic2019}. Our paper is positioned in that applied evaluation tradition rather than in the literature on new backbone or uncertainty architectures.
 
-For the image backbone, we use ConvNeXt-Tiny, following the ConvNeXt architecture family \citep{liu2022convnet}. Calibration is handled with post-hoc temperature scaling, a standard and strong baseline for neural probability calibration \citep{guo2017calibration}. Selective prediction is summarized through risk-coverage analysis and AURC-style outputs, grounded in the selective classification literature \citep{geifman2017selective}. As a noisy-label comparison, we include generalized cross-entropy (GCE), a well-known robust-loss baseline \citep{zhang2018gce}. The main corrected recipe also uses light label smoothing \citep{szegedy2016inception}.
+For the image backbone, we use ConvNeXt-Tiny, following the ConvNeXt architecture family \citep{liu2022convnet}. Calibration is handled with post-hoc temperature scaling, a standard and strong baseline for neural probability calibration \citep{guo2017calibration}. Selective prediction is summarized through risk-coverage analysis and AURC-style outputs, grounded in the selective classification literature \citep{geifman2017selective}. The broader uncertainty literature also warns that calibration quality can change materially under dataset shift, even when internal confidence estimates appear reasonable \citep{ovadia2019uncertainty}.
+
+For noisy labels, the design choice here is intentionally conservative. The literature on learning from noisy labels is much broader than any single baseline family \citep{song2023noisylabelsurvey}, but this paper does not attempt a broad benchmark of robust-learning algorithms. Instead, we include generalized cross-entropy (GCE) as a practical robust-loss anchor \citep{zhang2018gce} and test whether a budgeted repair intervention beats matched no-repair and random-repair baselines. The main corrected recipe also uses light label smoothing \citep{szegedy2016inception}.
 
 \section{Methods}
 
@@ -100,6 +104,8 @@ The corrected internal evidence suite includes:
 
 The main external evidence suite evaluates the three most relevant operational variants: repair, no repair, and random repair. An image-overlap audit between HAM10000 and ISIC 2019 reports exact-hash matches and perceptual-hash near-duplicate candidates.
 
+The main repair, no-repair, random-repair, and external-validation comparisons use seeds \texttt{42, 52, 62, 72, 82}. The clean upper bound and GCE anchor use seeds \texttt{42, 52, 62}. All paper-facing evaluations use explicit checkpoint selection by validation macro-F1.
+
 For visualization, calibrated reliability and risk-coverage plots are shown for the representative seed whose calibrated macro-F1 is closest to the multiseed mean of the repair run. In the final exports, this seed was \texttt{seed-72} for both the internal and external repair comparisons.
 
 \section{Results}
@@ -119,16 +125,18 @@ Random repair & $0.8319 \pm 0.0051$ & $0.7105 \pm 0.0239$ & $0.0356 \pm 0.0071$ 
 \bottomrule
 \end{tabular}
 }
-\caption{Corrected internal main comparison on HAM10000.}
+\caption{Corrected internal main comparison on HAM10000, reported as calibrated test metrics (mean $\pm$ std) across five seeds.}
 \label{tab:internal-main}
 \end{table}
 
 The internal comparison does not support a ``repair wins everywhere'' story. Repair produces a small point-performance gain in accuracy and macro-F1, but no-repair and random-repair remain highly competitive, and both outperform repair on some trust metrics such as ECE, AUROC, and AURC.
 
+Seed-paired statistical reporting reinforces that restrained interpretation. On calibrated macro-F1, repair is nearly indistinguishable from no repair (mean delta $0.0008$, 95\% paired bootstrap CI $[-0.0231, 0.0217]$, exact sign-flip $p=1.0000$) and only modestly above random repair (mean delta $0.0045$, 95\% CI $[-0.0112, 0.0262]$, $p=0.8750$). Against GCE the effect size is large on the shared three-seed subset (mean delta $0.5918$, 95\% CI $[0.5552, 0.6332]$), but the exact permutation resolution is coarse at $n=3$ ($p=0.2500$). Full seed-paired statistics are reported in the supplementary appendix.
+
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.92\linewidth]{paper_figures/internal_external_summary.png}
-\caption{Final internal-vs-external summary across the three main operational settings. Internal point performance remains strong, but all variants degrade substantially under external shift.}
+\caption{Final internal-vs-external summary across the three main operational settings. Bars show multiseed means for calibrated macro-F1, accuracy, macro-AUROC, and ECE. Internal point performance remains strong, but all variants degrade substantially under external shift.}
 \label{fig:summary}
 \end{figure}
 
@@ -147,7 +155,7 @@ The internal comparison does not support a ``repair wins everywhere'' story. Rep
 
 \small (b) Internal calibrated risk-coverage
 \end{minipage}
-\caption{Representative internal repair plots from \texttt{seed-72}, selected as the seed whose calibrated macro-F1 is closest to the multiseed mean.}
+\caption{Representative internal repair plots from \texttt{seed-72}, selected as the seed whose calibrated macro-F1 is closest to the repair multiseed mean. The panel is qualitative only and is not used for statistical comparison.}
 \label{fig:internal-plots}
 \end{figure}
 
@@ -166,7 +174,7 @@ GCE no repair & $0.6774 \pm 0.0012$ & $0.1224 \pm 0.0122$ & $0.0268 \pm 0.0381$ 
 \bottomrule
 \end{tabular}
 }
-\caption{Noisy-label anchors and baseline comparisons.}
+\caption{Noisy-label anchors and baseline comparisons. Repair is reported across five seeds; the clean upper bound and GCE anchor are reported across the shared three-seed subset.}
 \label{tab:anchors}
 \end{table}
 
@@ -187,11 +195,13 @@ Random repair external & $0.5591 \pm 0.0203$ & $0.4311 \pm 0.0328$ & $0.2149 \pm
 \bottomrule
 \end{tabular}
 }
-\caption{External validation on the official ISIC 2019 test set.}
+\caption{External validation on the official ISIC 2019 test set, reported as calibrated test metrics (mean $\pm$ std) across five seeds.}
 \label{tab:external-main}
 \end{table}
 
 All methods degrade sharply on ISIC 2019 relative to internal HAM10000 evaluation. Repair remains modestly ahead of the two comparison baselines on external accuracy and macro-F1, but it does not dominate all trust metrics. The overall lesson is not that repair solves external robustness, but that even modest internal gains must be interpreted cautiously under shift.
+
+The external seed-paired comparisons remain modest. On calibrated macro-F1, repair exceeds no repair by $0.0139$ (95\% CI $[-0.0044, 0.0281]$, exact sign-flip $p=0.1875$) and random repair by $0.0117$ (95\% CI $[-0.0097, 0.0329]$, $p=0.4375$). These deltas are directionally favorable for repair but are not strong evidence of a large or universal external trustworthiness gain.
 
 \begin{figure}[ht]
 \centering
@@ -208,31 +218,32 @@ All methods degrade sharply on ISIC 2019 relative to internal HAM10000 evaluatio
 
 \small (b) External calibrated risk-coverage
 \end{minipage}
-\caption{Representative external repair plots from \texttt{seed-72}. The visual shift from the internal curves is consistent with the large external degradation in accuracy, macro-F1, ECE, and AURC.}
+\caption{Representative external repair plots from \texttt{seed-72}. The visual shift from the internal curves is consistent with the large external degradation in accuracy, macro-F1, ECE, and AURC. As in Figure~\ref{fig:internal-plots}, the panel is qualitative and the representative seed is recorded in the figure manifest.}
 \label{fig:external-plots}
 \end{figure}
 
 \subsection{Overlap audit}
 
-The overlap audit found 10{,}015 HAM10000 samples, 6{,}191 mapped ISIC 2019 external samples, zero exact duplicate images, and 14{,}185 perceptual-hash candidate pairs at dHash $\leq 4$. The zero exact matches are the key integrity result. The perceptual-hash list is a coarse candidate screen for manual or secondary review and should not be interpreted as confirmed leakage.
+The overlap audit found 10{,}015 HAM10000 samples, 6{,}191 mapped ISIC 2019 external samples, zero exact duplicate images, and 14{,}185 perceptual-hash candidate pairs at dHash $\leq 4$. The zero exact matches are the key integrity result. The perceptual-hash list is a deliberately coarse candidate screen for manual or secondary review and should not be interpreted as confirmed overlap or confirmed leakage.
 
 \section{Discussion}
 
 The final evidence supports a restrained but useful conclusion. Budgeted trusted-label repair is not a universally dominant intervention in this setting. It yields only a modest advantage over no-repair and random-repair baselines in point performance, while other trust metrics remain mixed. This is exactly why the stronger baseline suite matters: without random repair and no repair, it would have been easy to overstate the value of repair.
 
-The external findings are the most important part of the paper. Internal HAM10000 performance is strong for all competitive variants, but all of them degrade substantially on ISIC 2019. That drop is not a side note; it is the central trustworthy-ML result. Similarly, post-hoc calibration learned in-distribution does not remove external confidence fragility, echoing the broader cautionary lessons of realistic external evaluation in dermoscopy \citep{combalia2022isic2019}.
+The external findings are the most important part of the paper. Internal HAM10000 performance is strong for all competitive variants, but all of them degrade substantially on ISIC 2019. That drop is not a side note; it is the central trustworthy-ML result. Similarly, post-hoc calibration learned in-distribution does not remove external confidence fragility, echoing broader warnings about uncertainty evaluation under distribution shift \citep{combalia2022isic2019,ovadia2019uncertainty}.
 
-The paper is therefore strongest when framed as an externally validated experimental study rather than a method paper. Its contribution is evidence: which interventions remain competitive, which fail, and how internal trust signals do or do not transfer externally.
+The paper is therefore strongest when framed as an externally validated experimental study rather than a method paper. Its contribution is evidence: which interventions remain competitive, which fail, and how internal trust signals do or do not transfer externally. In practical terms, the study argues against two common over-interpretations: that a small internal macro-F1 gain implies materially safer external behavior, and that post-hoc calibration fitted in-distribution is sufficient evidence of trustworthy deployment readiness.
 
 \section{Limitations}
 
 \begin{itemize}
-  \item The repair protocol is simulated oracle supervision, not prospective expert annotation.
-  \item External validation is limited to one external dataset.
-  \item Perceptual-hash overlap candidates were not exhaustively adjudicated manually.
-  \item Repair does not dominate all trust metrics, so claims must remain modest.
-  \item No clinician reader study or deployment evaluation is included.
-  \item The work does not introduce a new learning algorithm.
+  \item The label-corruption process is simulated and class-dependent; it is not estimated from observed expert disagreement patterns.
+  \item The repair protocol is simulated oracle supervision, not prospective expert annotation or a clinician-in-the-loop workflow.
+  \item External validation is limited to one official external benchmark and one fixed taxonomy-mapping choice.
+  \item Seed-paired statistical reporting is available for the prespecified main comparisons, but its resolution is limited by five-seed main runs and a three-seed GCE anchor.
+  \item Perceptual-hash overlap candidates were not exhaustively adjudicated manually, so only the zero exact-duplicate result is definitive.
+  \item No clinician reader study, workflow study, or deployment evaluation is included.
+  \item The work is comparative and evaluative; it does not introduce a new learning algorithm.
 \end{itemize}
 
 \section{Conclusion}

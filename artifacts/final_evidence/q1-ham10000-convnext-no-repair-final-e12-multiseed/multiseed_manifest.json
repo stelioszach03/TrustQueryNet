@@ -1,0 +1,13 @@
+{
+  "base_config_path": "/content/TrustQueryNet/configs/colab_q1-ham10000-convnext-no-repair-final-e12.yaml",
+  "output_root": "/content/drive/MyDrive/TrustQueryNet/artifacts/final_evidence/q1-ham10000-convnext-no-repair-final-e12-multiseed",
+  "seeds": [
+    42,
+    52,
+    62,
+    72,
+    82
+  ],
+  "resume_existing": true,
+  "aggregate_results_path": "/content/drive/MyDrive/TrustQueryNet/artifacts/final_evidence/q1-ham10000-convnext-no-repair-final-e12-multiseed/aggregate_results.json"
+}

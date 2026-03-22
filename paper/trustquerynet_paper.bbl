@@ -1,4 +1,4 @@
-\begin{thebibliography}{7}
+\begin{thebibliography}{9}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -30,6 +30,16 @@ Marc Combalia, Noel Codella, Veronica Rotemberg, Cristina Carrera, Stephen
 \newblock \doi{10.1016/S2589-7500(22)00021-8}.
 \newblock URL \url{https://doi.org/10.1016/S2589-7500(22)00021-8}.
 
+\bibitem[Ovadia et~al.(2019)Ovadia, Fertig, Ren, Nado, Sculley, Nowozin,
+  Dillon, Lakshminarayanan, and Snoek]{ovadia2019uncertainty}
+Yaniv Ovadia, Emily Fertig, Jie Ren, Zachary Nado, D.~Sculley, Sebastian
+  Nowozin, Joshua~V. Dillon, Balaji Lakshminarayanan, and Jasper Snoek.
+\newblock Can you trust your model's uncertainty? evaluating predictive
+  uncertainty under dataset shift.
+\newblock In \emph{Advances in Neural Information Processing Systems 32}, 2019.
+\newblock URL
+  \url{https://proceedings.neurips.cc/paper/2019/file/8558cb408c1d76621371888657d2eb1d-Paper.pdf}.
+
 \bibitem[Liu et~al.(2022)Liu, Mao, Wu, Feichtenhofer, Darrell, and
   Xie]{liu2022convnet}
 Zhuang Liu, Hanzi Mao, Chao-Yuan Wu, Christoph Feichtenhofer, Trevor Darrell,
@@ -54,6 +64,15 @@ Yonatan Geifman and Ran El-Yaniv.
 \newblock In \emph{Advances in Neural Information Processing Systems 30}, 2017.
 \newblock URL
   \url{https://papers.neurips.cc/paper_files/paper/2017/hash/4a8423d5e91fda00bb7e46540e2b0cf1-Abstract.html}.
+
+\bibitem[Song et~al.(2023)Song, Kim, Park, Shin, and
+  Lee]{song2023noisylabelsurvey}
+Hwanjun Song, Minseok Kim, Dongmin Park, Yooju Shin, and Jae-Gil Lee.
+\newblock Learning from noisy labels with deep neural networks: A survey.
+\newblock \emph{IEEE Transactions on Neural Networks and Learning Systems},
+  34\penalty0 (11):\penalty0 8135--8153, 2023.
+\newblock \doi{10.1109/TNNLS.2022.3152527}.
+\newblock URL \url{https://dblp.org/rec/journals/tnn/SongKPSL23.html}.
 
 \bibitem[Zhang and Sabuncu(2018)]{zhang2018gce}
 Zhilu Zhang and Mert~R. Sabuncu.

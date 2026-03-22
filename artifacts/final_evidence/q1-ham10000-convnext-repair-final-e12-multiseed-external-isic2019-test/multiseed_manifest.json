@@ -1,0 +1,14 @@
+{
+  "source_multiseed_run_dir": "/content/drive/MyDrive/TrustQueryNet/artifacts/final_evidence/q1-ham10000-convnext-repair-final-e12-multiseed",
+  "seeds": [
+    42,
+    52,
+    62,
+    72,
+    82
+  ],
+  "external_dataset": "isic2019_test",
+  "ground_truth_csv": "/content/drive/MyDrive/ISIC2019_external_test/ISIC_2019_Test_GroundTruth.csv",
+  "image_dir": "/content/drive/MyDrive/ISIC2019_external_test/images",
+  "metadata_csv": "/content/drive/MyDrive/ISIC2019_external_test/ISIC_2019_Test_Metadata.csv"
+}

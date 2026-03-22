@@ -1,0 +1,9 @@
+{
+  "ham10000_samples": 10015,
+  "isic2019_external_samples": 6191,
+  "exact_match_count": 0,
+  "near_duplicate_candidate_count": 14185,
+  "dhash_threshold": 4,
+  "exact_matches_csv": "/content/drive/MyDrive/TrustQueryNet/artifacts/overlap/ham10000-isic2019/exact_matches.csv",
+  "near_duplicate_candidates_csv": "/content/drive/MyDrive/TrustQueryNet/artifacts/overlap/ham10000-isic2019/near_duplicate_candidates.csv"
+}
